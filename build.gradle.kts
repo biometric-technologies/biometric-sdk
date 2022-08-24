@@ -16,9 +16,8 @@ kotlin {
         }
         withJava()
     }
-    js(BOTH) {
-        browser {
-        }
+    js(IR) {
+        binaries.executable()
     }
     val hostOs = System.getProperty("os.name")
     val isMingwX64 = hostOs.startsWith("Windows")
@@ -28,11 +27,32 @@ kotlin {
         isMingwX64 -> mingwX64("native")
         else -> throw GradleException("Host OS is not supported in Kotlin/Native.")
     }
+    nativeTarget.apply {
+        binaries {
+            sharedLib {
+                baseName = when (isMingwX64) {
+                    true -> "libbiometric"
+                    false -> "biometric"
+                }
+            }
+        }
+    }
 
-    
+
     sourceSets {
-        val commonMain by getting
-        val commonTest by getting
+        val commonMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-io:0.1.16")
+                implementation("org.jetbrains.kotlinx:atomicfu:1.6.21")
+                implementation("org.jetbrains.kotlinx:multik-core:0.2.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+            }
+        }
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
         val jvmMain by getting
         val jvmTest by getting
         val jsMain by getting

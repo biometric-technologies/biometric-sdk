@@ -6,6 +6,6 @@ package net.iriscan.sdk.core.record
  * Biometric record validation result
  *
  * @see BiometricRecord
- * @see BiometricRecordAdapter
+ * @see BiometricRecordSerializer
  */
 data class BiometricRecordValidationResult(val validated: Boolean, val error: String?)

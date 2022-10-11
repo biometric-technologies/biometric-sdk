@@ -1,15 +1,15 @@
 package net.iriscan.sdk.iris.record.iso
 
-import net.iriscan.sdk.core.record.BiometricRecordAdapter
+import net.iriscan.sdk.io.record.BiometricRecordSerializer
 import net.iriscan.sdk.core.record.BiometricRecordValidationResult
 
 /**
  * @author Slava Gornostal
  */
-class IsoIrisImageRecordAdapter(override val formatIdentifier: String = "IIR") :
-    BiometricRecordAdapter<IsoIrisImageRecord> {
+class IsoIrisImageRecordSerializer(override val formatIdentifier: String = "IIR") :
+    BiometricRecordSerializer<IsoIrisImageRecord> {
 
-    override fun deserialize(data: ByteArray): IsoIrisImageRecord {
+    override fun read(data: ByteArray): IsoIrisImageRecord {
         TODO("Not yet implemented")
     }
 
@@ -17,7 +17,7 @@ class IsoIrisImageRecordAdapter(override val formatIdentifier: String = "IIR") :
         TODO("Not yet implemented")
     }
 
-    override fun serialize(record: IsoIrisImageRecord): ByteArray {
+    override fun write(record: IsoIrisImageRecord): ByteArray {
         TODO("Not yet implemented")
     }
 }

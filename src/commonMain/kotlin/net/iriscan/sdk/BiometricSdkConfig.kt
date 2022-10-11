@@ -1,7 +1,8 @@
 package net.iriscan.sdk
 
 import net.iriscan.sdk.core.algorithm.BiometricAlgorithmProperties
-import net.iriscan.sdk.core.record.BiometricRecordAdapter
+import net.iriscan.sdk.io.image.ImageSerializer
+import net.iriscan.sdk.io.record.BiometricRecordSerializer
 import net.iriscan.sdk.iris.IrisAlgorithm
 
 /**
@@ -10,7 +11,8 @@ import net.iriscan.sdk.iris.IrisAlgorithm
  * SDK configuration object
  */
 data class BiometricSdkConfig(
-    val adapters: List<BiometricRecordAdapter<*>>,
+    val biometricSerializers: List<BiometricRecordSerializer<*>>,
+    val imageSerializers: List<ImageSerializer>,
     val irisAlgorithm: IrisAlgorithm,
     val biometricAlgorithmProperties: BiometricAlgorithmProperties?,
 ) {
@@ -19,12 +21,16 @@ data class BiometricSdkConfig(
     }
 
     data class Builder(
-        var adapters: List<BiometricRecordAdapter<*>>? = null,
+        var biometricSerializers: List<BiometricRecordSerializer<*>>? = null,
+        var imageSerializers: List<ImageSerializer>? = null,
         var irisAlgorithm: IrisAlgorithm = IrisAlgorithm.DAUGMAN,
         var irisAlgorithmProperties: BiometricAlgorithmProperties? = null,
     ) {
-        fun withAdapters(adapters: List<BiometricRecordAdapter<*>>) =
-            apply { this.adapters = adapters }
+        fun withBiometricSerializers(serializers: List<BiometricRecordSerializer<*>>) =
+            apply { this.biometricSerializers = serializers }
+
+        fun withImageSerializers(serializers: List<ImageSerializer>) =
+            apply { this.imageSerializers = serializers }
 
         fun configureIris(algorithm: IrisAlgorithm, properties: BiometricAlgorithmProperties) =
             apply {
@@ -34,7 +40,8 @@ data class BiometricSdkConfig(
 
         fun build(): BiometricSdkConfig =
             BiometricSdkConfig(
-                adapters = adapters ?: emptyList(),
+                biometricSerializers = biometricSerializers ?: emptyList(),
+                imageSerializers = imageSerializers ?: emptyList(),
                 irisAlgorithm = irisAlgorithm,
                 biometricAlgorithmProperties = irisAlgorithmProperties,
             )

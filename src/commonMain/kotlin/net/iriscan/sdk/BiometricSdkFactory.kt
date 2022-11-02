@@ -3,6 +3,7 @@ package net.iriscan.sdk
 import kotlinx.atomicfu.AtomicRef
 import kotlinx.atomicfu.atomic
 import net.iriscan.sdk.core.exception.SdkNotInitializedException
+import net.iriscan.sdk.face.FaceOperations
 import net.iriscan.sdk.io.InputOutputOperations
 import net.iriscan.sdk.iris.IrisOperations
 import net.iriscan.sdk.iris.impl.IrisOperationsImpl
@@ -37,5 +38,8 @@ private class BiometricSdkOperationsImpl(val config: BiometricSdkConfig) : Biome
     }
 
     override fun iris(): IrisOperations = IrisOperationsImpl(config)
+    override fun face(): FaceOperations {
+        TODO("Not implemented yet")
+    }
 
 }

@@ -20,9 +20,9 @@ interface IrisEncoder {
     /**
      * Extracts and encodes provided image to iris template
      * */
-    fun encode(sample: Image): ByteArray
-    fun encode(
-        sample: Image,
+    fun extractAndEncode(sample: IrisImageRecord): ByteArray
+    fun extractAndEncode(
+        sample: IrisImageRecord,
         extractProps: BiometricAlgorithmProperties,
         encodeProps: BiometricAlgorithmProperties
     ): ByteArray
@@ -30,6 +30,17 @@ interface IrisEncoder {
     /**
      * Encodes provided extracted image to iris template
      * */
-    fun encodeTexture(sample: Image): ByteArray
-    fun encodeTexture(sample: Image, props: BiometricAlgorithmProperties): ByteArray
+    fun encode(sample: Image): ByteArray
+    fun encode(sample: Image, props: BiometricAlgorithmProperties): ByteArray
+
+
+    /**
+     * Extracts and encodes provided image to iris template
+     * */
+    fun extractAndEncode(sample: Image): ByteArray
+    fun extractAndEncode(
+        sample: Image,
+        extractProps: BiometricAlgorithmProperties,
+        encodeProps: BiometricAlgorithmProperties
+    ): ByteArray
 }

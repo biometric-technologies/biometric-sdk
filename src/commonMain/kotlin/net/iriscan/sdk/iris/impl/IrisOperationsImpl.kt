@@ -39,12 +39,12 @@ internal class IrisOperationsImpl(private val sdkConfig: BiometricSdkConfig) : I
             TODO("Not implemented yet")
         }
 
-        override fun encode(sample: Image): ByteArray {
+        override fun extractAndEncode(sample: Image): ByteArray {
             val texture = extractInternal(sample, sdkConfig.iris.extractor)
             return encodeInternal(texture, sdkConfig.iris.encoder)
         }
 
-        override fun encode(
+        override fun extractAndEncode(
             sample: Image,
             extractProps: BiometricAlgorithmProperties,
             encodeProps: BiometricAlgorithmProperties
@@ -55,11 +55,23 @@ internal class IrisOperationsImpl(private val sdkConfig: BiometricSdkConfig) : I
             return encodeInternal(texture, encodeProps)
         }
 
-        override fun encodeTexture(sample: Image): ByteArray = encodeInternal(sample, sdkConfig.iris.encoder)
+        override fun encode(sample: Image): ByteArray = encodeInternal(sample, sdkConfig.iris.encoder)
 
-        override fun encodeTexture(sample: Image, props: BiometricAlgorithmProperties): ByteArray {
+        override fun encode(sample: Image, props: BiometricAlgorithmProperties): ByteArray {
             require(props is IrisEncodeProperties)
             return encodeInternal(sample, props)
+        }
+
+        override fun extractAndEncode(sample: IrisImageRecord): ByteArray {
+            TODO("Not implemented yet")
+        }
+
+        override fun extractAndEncode(
+            sample: IrisImageRecord,
+            extractProps: BiometricAlgorithmProperties,
+            encodeProps: BiometricAlgorithmProperties
+        ): ByteArray {
+            TODO("Not implemented yet")
         }
     }
 

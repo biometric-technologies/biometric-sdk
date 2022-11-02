@@ -7,7 +7,9 @@ package net.iriscan.sdk.core.image
  * @see ImageType
  * @see Color
  */
-class Image(val width: Int, val height: Int, val type: ImageType, val colors: IntArray) {
+class Image(val width: Int, val height: Int, var type: ImageType, val colors: IntArray) {
+
+    val size = colors.size
 
     operator fun get(x: Int, y: Int): Int = this.colors[y * width + x]
 

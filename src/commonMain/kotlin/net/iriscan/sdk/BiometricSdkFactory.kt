@@ -1,7 +1,5 @@
 package net.iriscan.sdk
 
-import kotlinx.atomicfu.AtomicRef
-import kotlinx.atomicfu.atomic
 import net.iriscan.sdk.core.exception.SdkNotInitializedException
 import net.iriscan.sdk.face.FaceOperations
 import net.iriscan.sdk.io.InputOutputOperations
@@ -13,18 +11,17 @@ import net.iriscan.sdk.qc.QualityControlOperations
  * @author Slava Gornostal
  */
 object BiometricSdkFactory : BiometricSdk {
-    private val instanceRef: AtomicRef<BiometricSdkOperationsImpl?> = atomic(null)
-
+    private val defaultConfig = BiometricSdkConfig.builder().build()
+    private var instanceRef: BiometricSdkOperations? = null
     override fun configure(config: BiometricSdkConfig?) {
-        val instanceConfig = this.instanceRef.value?.config
-        val configToSet = config ?: BiometricSdkConfig.builder().build()
-        if (config != instanceConfig) {
-            this.instanceRef.compareAndSet(this.instanceRef.value, BiometricSdkOperationsImpl(configToSet))
+        if (instanceRef != null) {
+            return
         }
+        this.instanceRef = BiometricSdkOperationsImpl(config ?: defaultConfig)
     }
 
     override fun getInstance(): BiometricSdkOperations =
-        instanceRef.value ?: throw SdkNotInitializedException("Initialize SDK by calling configure(..)")
+        instanceRef ?: throw SdkNotInitializedException("Initialize SDK by calling configure(..)")
 }
 
 private class BiometricSdkOperationsImpl(val config: BiometricSdkConfig) : BiometricSdkOperations {

@@ -4,9 +4,9 @@ package net.iriscan.sdk.io
  * @author Slava Gornostal
  *
  * Input/Output operations
- * All functions should be thread-safe
+ * All functions are thread-safe
  *
- * @see InputOutputBiometricOperations
+ * @see InputOutputRecordOperations
  * @see InputOutputImageOperations
  */
-interface InputOutputOperations : InputOutputBiometricOperations, InputOutputImageOperations
+interface InputOutputOperations : InputOutputRecordOperations, InputOutputImageOperations

@@ -4,10 +4,10 @@ package net.iriscan.sdk.core.image
  * @author Slava Gornostal
  *
  * Image data
- * @see ImageType
+ * @see ImageColorType
  * @see Color
  */
-class Image(val width: Int, val height: Int, var type: ImageType, val colors: IntArray) {
+class Image(val width: Int, val height: Int, var colorType: ImageColorType, val colors: IntArray) {
 
     val size = colors.size
 
@@ -25,7 +25,7 @@ class Image(val width: Int, val height: Int, var type: ImageType, val colors: In
                 colors[index++] = this[x, y]
             }
         }
-        return Image(newWidth, newHeight, type, colors)
+        return Image(newWidth, newHeight, colorType, colors)
     }
 
     operator fun contains(point: Point): Boolean =
@@ -39,5 +39,5 @@ class Image(val width: Int, val height: Int, var type: ImageType, val colors: In
         this.colors[index] = color
     }
 
-    fun clone(): Image = Image(width, height, type, IntArray(colors.size) { colors[it] })
+    fun clone(): Image = Image(width, height, colorType, IntArray(colors.size) { colors[it] })
 }

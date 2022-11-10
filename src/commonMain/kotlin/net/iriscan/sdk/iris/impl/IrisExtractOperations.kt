@@ -3,7 +3,7 @@ package net.iriscan.sdk.iris.impl
 import net.iriscan.sdk.core.exception.BiometricNotFoundException
 import net.iriscan.sdk.core.image.Circle
 import net.iriscan.sdk.core.image.Image
-import net.iriscan.sdk.core.image.ImageType
+import net.iriscan.sdk.core.image.ImageColorType
 import net.iriscan.sdk.core.image.Point
 import net.iriscan.sdk.core.utils.*
 import net.iriscan.sdk.iris.IrisExtractProperties
@@ -79,7 +79,7 @@ private fun cutTextureFromSample(
     normalizeHistogramImg(image)
     val width = (2 * Math.PI * iris.r).toInt()
     val height = (iris.r - pupil.r)
-    val result = createImg(width, height, ImageType.GRAY) { _, _ -> 255 }
+    val result = createImg(width, height, ImageColorType.GRAY) { _, _ -> 255 }
     val angleStep = 2.0 * Math.PI / width
     for (x in 0 until width) {
         for (y in 0 until height) {

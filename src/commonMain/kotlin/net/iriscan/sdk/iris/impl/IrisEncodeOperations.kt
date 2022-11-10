@@ -1,7 +1,7 @@
 package net.iriscan.sdk.iris.impl
 
 import net.iriscan.sdk.core.image.Image
-import net.iriscan.sdk.core.image.ImageType
+import net.iriscan.sdk.core.image.ImageColorType
 import net.iriscan.sdk.core.utils.createImg
 import net.iriscan.sdk.core.utils.normalizeHistogramImg
 import net.iriscan.sdk.iris.IrisEncodeProperties
@@ -10,7 +10,7 @@ import net.iriscan.sdk.iris.IrisEncodeProperties
  * @author Slava Gornostal
  */
 internal fun encodeInternal(texture: Image, props: IrisEncodeProperties): ByteArray {
-    require(texture.type == ImageType.GRAY)
+    require(texture.colorType == ImageColorType.GRAY)
     var image = texture.clone()
     normalizeHistogramImg(image)
     image = extractNBP(texture)
@@ -18,7 +18,7 @@ internal fun encodeInternal(texture: Image, props: IrisEncodeProperties): ByteAr
     val templateHeight = props.templateHeight
     val blockWidth = image.width / templateWidth
     val blockHeight = image.height / templateHeight
-    val means = createImg(templateWidth, templateHeight, type = ImageType.GRAY) { x, y ->
+    val means = createImg(templateWidth, templateHeight, type = ImageColorType.GRAY) { x, y ->
         image[x * blockWidth..x * blockWidth + x, y * blockHeight..y * blockHeight + y].colors.average().toInt()
     }
     return means.colors

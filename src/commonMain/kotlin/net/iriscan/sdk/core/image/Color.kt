@@ -4,7 +4,7 @@ package net.iriscan.sdk.core.image
  * @author Slava Gornostal
  *
  * Color operations
- * @see ImageType
+ * @see ImageColorType
  */
 typealias Color = Int
 

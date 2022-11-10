@@ -12,8 +12,8 @@ import net.iriscan.sdk.core.record.BiometricRecordValidationResult
  * @see net.iriscan.sdk.BiometricSdkConfig
  */
 interface BiometricRecordSerializer<R : BiometricRecord> {
+    val formatIdentifier: String
     fun canRead(data: ByteArray): Boolean
     fun read(data: ByteArray): R
     fun write(record: R): ByteArray
-    fun validate(data: ByteArray): BiometricRecordValidationResult
 }

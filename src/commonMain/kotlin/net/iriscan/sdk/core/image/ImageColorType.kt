@@ -3,7 +3,7 @@ package net.iriscan.sdk.core.image
 /**
  * @author Slava Gornostal
  *
- * Image type
+ * Image color type
  *
  * RGB - 0x000000..0xffffff
  * GRAY - 0x00..0xff
@@ -11,7 +11,7 @@ package net.iriscan.sdk.core.image
  *
  * @see Color
  */
-enum class ImageType {
+enum class ImageColorType {
     RGB,
     GRAY,
     BINARY

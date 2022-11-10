@@ -9,7 +9,7 @@ import kotlin.math.round
  * @author Slava Gornostal
  */
 internal fun grayscaleImg(image: Image) {
-    if (image.type == ImageType.GRAY) {
+    if (image.colorType == ImageColorType.GRAY) {
         return
     }
     for (x in 0 until image.width) {
@@ -22,13 +22,13 @@ internal fun grayscaleImg(image: Image) {
             }
         }
     }
-    image.type = ImageType.GRAY
+    image.colorType = ImageColorType.GRAY
 }
 
 internal inline fun thresholdImg(image: Image, condition: (color: Int) -> Boolean): Image {
-    require(image.type == ImageType.GRAY)
+    require(image.colorType == ImageColorType.GRAY)
     val result = image.clone()
-    result.type = ImageType.BINARY
+    result.colorType = ImageColorType.BINARY
     for (x in 0 until result.width) {
         for (y in 0 until result.height) {
             result[x, y] = when (condition(result[x, y])) {
@@ -41,7 +41,7 @@ internal inline fun thresholdImg(image: Image, condition: (color: Int) -> Boolea
 }
 
 internal fun fillImg(image: Image, threshold: Int, kernel: Int, fillKernel: Int) {
-    require(image.type == ImageType.GRAY)
+    require(image.colorType == ImageColorType.GRAY)
     require(threshold in 0..255)
     val offset = kernel / 2
     val fillOffset = fillKernel / 2
@@ -75,7 +75,7 @@ internal fun gaussianFilterImg(
     mask: Array<IntArray> = arrayOf(intArrayOf(1, 2, 1), intArrayOf(2, 4, 2), intArrayOf(1, 2, 1)),
     divisor: Int = 16
 ) {
-    require(image.type == ImageType.GRAY)
+    require(image.colorType == ImageColorType.GRAY)
     for (x in 0 until image.width) {
         for (y in 0 until image.height) {
             val (xmin, xmax) = max(x - 1, 0) to min(x + 1, image.width - 1)
@@ -91,7 +91,7 @@ internal fun gaussianFilterImg(
 }
 
 internal fun normalizeHistogramImg(image: Image, mask: Image? = null) {
-    require(image.type == ImageType.GRAY)
+    require(image.colorType == ImageColorType.GRAY)
     val histogram = IntArray(256)
     val histogramSrc = mask ?: image
     for (i in 0 until histogramSrc.size) {
@@ -114,13 +114,13 @@ internal fun normalizeHistogramImg(image: Image, mask: Image? = null) {
 internal fun createImg(
     width: Int,
     height: Int,
-    type: ImageType = ImageType.RGB,
+    type: ImageColorType = ImageColorType.RGB,
     getColorAt: (x: Int, y: Int) -> Int
 ): Image =
     Image(
         width = width,
         height = height,
-        type = type,
+        colorType = type,
         colors = IntArray(width * height) { index -> getColorAt(index % width, index / width) }
     )
 
@@ -132,7 +132,7 @@ internal fun resizeImg(
     require(newWidth > 0 && newHeight > 0)
     val scaleX = newWidth / image.width.toDouble()
     val scaleY = newHeight / image.height.toDouble()
-    return createImg(newWidth, newHeight, image.type) { x, y ->
+    return createImg(newWidth, newHeight, image.colorType) { x, y ->
         val ix = min(image.width - 1, round(x / scaleX).toInt())
         val iy = min(image.height - 1, round(y / scaleY).toInt())
         image[ix, iy]

@@ -15,6 +15,9 @@ interface BiometricSdk {
      * Get SDK operations
      *
      * @see BiometricSdkOperations
+     * @throws SdkNotInitializedException
      * */
     fun getInstance(): BiometricSdkOperations
 }
+
+class SdkNotInitializedException(message: String) : Exception(message)

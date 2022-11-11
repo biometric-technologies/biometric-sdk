@@ -1,5 +1,8 @@
 package net.iriscan.sdk.io
 
+import net.iriscan.sdk.io.image.impl.InputOutputImageOperationsImpl
+import net.iriscan.sdk.io.record.impl.InputOutputRecordOperationsImpl
+
 /**
  * @author Slava Gornostal
  *
@@ -10,3 +13,8 @@ package net.iriscan.sdk.io
  * @see InputOutputImageOperations
  */
 interface InputOutputOperations : InputOutputRecordOperations, InputOutputImageOperations
+
+internal class InputOutputOperationsImpl :
+    InputOutputImageOperations by InputOutputImageOperationsImpl(),
+    InputOutputRecordOperations by InputOutputRecordOperationsImpl(),
+    InputOutputOperations

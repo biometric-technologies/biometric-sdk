@@ -2,6 +2,7 @@ package net.iriscan.sdk
 
 import net.iriscan.sdk.face.FaceOperations
 import net.iriscan.sdk.io.InputOutputOperations
+import net.iriscan.sdk.io.InputOutputOperationsImpl
 import net.iriscan.sdk.iris.IrisOperations
 import net.iriscan.sdk.iris.impl.IrisOperationsImpl
 import net.iriscan.sdk.qc.QualityControlOperations
@@ -25,9 +26,7 @@ object BiometricSdkFactory : BiometricSdk {
 
 private class BiometricSdkOperationsImpl(val config: BiometricSdkConfig) : BiometricSdkOperations {
 
-    override fun io(): InputOutputOperations {
-        TODO("Not implemented yet")
-    }
+    override fun io(): InputOutputOperations = InputOutputOperationsImpl()
 
     override fun qualityControl(): QualityControlOperations {
         TODO("Not implemented yet")

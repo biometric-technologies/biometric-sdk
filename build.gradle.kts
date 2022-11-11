@@ -1,5 +1,6 @@
 plugins {
     kotlin("multiplatform") version "1.7.10"
+    id("maven-publish")
 }
 
 group = "net.iriscan"
@@ -60,5 +61,16 @@ kotlin {
         val jsTest by getting
         val nativeMain by getting
         val nativeTest by getting
+    }
+
+    publishing {
+        publications {
+            create<MavenPublication>("mavenJava") {
+                pom {
+                    name.set("Biometric SDK")
+                    description.set("Biometric SDK")
+                }
+            }
+        }
     }
 }

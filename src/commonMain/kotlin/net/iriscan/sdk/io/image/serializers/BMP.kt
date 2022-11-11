@@ -10,13 +10,13 @@ import net.iriscan.sdk.io.image.ImageSerializer
 /**
  * @author Slava Gornostal
  */
-object BMP : ImageSerializer {
+internal object BMP : ImageSerializer {
 
     override val format: ImageFormat
         get() = ImageFormat.BMP
 
     override fun canRead(data: ByteArray): Boolean =
-        MemorySyncStream(data).readStringz(2) == "BMP"
+        data.size > 4 && MemorySyncStream(data).readStringz(2) == "BM"
 
     override fun read(data: ByteArray): Image {
         val stream = MemorySyncStream(data)

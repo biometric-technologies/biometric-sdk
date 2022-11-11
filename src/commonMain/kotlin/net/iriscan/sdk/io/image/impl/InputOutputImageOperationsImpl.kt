@@ -11,13 +11,14 @@ import net.iriscan.sdk.io.exception.UnknownFormatException
 import net.iriscan.sdk.io.image.ImageFormat
 import net.iriscan.sdk.io.image.ImageSerializer
 import net.iriscan.sdk.io.image.serializers.BMP
+import net.iriscan.sdk.io.image.serializers.PNG
 
 /**
  * @author Slava Gornostal
  */
 internal class InputOutputImageOperationsImpl : InputOutputImageOperations {
 
-    private val serializers = listOf<ImageSerializer>(BMP)
+    private val serializers = listOf(BMP, PNG)
 
     override fun readImage(data: ByteArray): Image {
         val serializer = serializers.firstOrNull { it.canRead(data) }

@@ -28,8 +28,8 @@ internal object BMP : ImageSerializer {
         val dataOffset = stream.readS32LE()
         // skip header size
         stream.skip(4)
-        val height = stream.readS32LE()
         val width = stream.readS32LE()
+        val height = stream.readS32LE()
         // skip planes
         stream.skip(2)
         val bitsPerPixel = stream.readS16LE()
@@ -70,7 +70,8 @@ internal object BMP : ImageSerializer {
     }
 
     override fun write(image: Image): ByteArray = MemorySyncStreamToByteArray {
-        writeStringz("BM")
+        write8('B'.code)
+        write8('M'.code)
         val imageSize = image.size * 24 / 8
         val fileSize = 54 + imageSize
         // file size, reserved
@@ -93,10 +94,15 @@ internal object BMP : ImageSerializer {
         write32LE(0)
         write32LE(0)
         write32LE(0)
+        val widthPadding = when (val padding = 4 - (image.width * 24 / 8 % 4)) {
+            4 -> ByteArray(0)
+            else -> ByteArray(padding)
+        }
         for (y in image.height - 1 downTo 0) {
             for (x in 0 until image.width) {
                 write24LE(image[x, y])
             }
+            writeBytes(widthPadding)
         }
     }
 

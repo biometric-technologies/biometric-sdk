@@ -7,7 +7,5 @@ import net.iriscan.sdk.core.record.BiometricRecord
  */
 interface InputOutputRecordOperations {
     fun readRecord(data: ByteArray): BiometricRecord
-    fun readRecord(filePath: String): BiometricRecord
-    fun writeRecord(filePath: String, record: BiometricRecord)
-    fun writeAsByteArrayRecord(record: BiometricRecord): ByteArray
+    fun writeRecord(record: BiometricRecord): ByteArray
 }

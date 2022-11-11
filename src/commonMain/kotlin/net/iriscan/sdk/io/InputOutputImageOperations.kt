@@ -8,7 +8,5 @@ import net.iriscan.sdk.io.image.ImageFormat
  */
 interface InputOutputImageOperations {
     fun readImage(data: ByteArray): Image
-    fun readImage(filePath: String): Image
-    fun writeImage(image: Image, filePath: String, format: ImageFormat)
-    fun writeAsByteArrayImage(image: Image, format: ImageFormat): ByteArray
+    fun writeImage(image: Image, format: ImageFormat): ByteArray
 }

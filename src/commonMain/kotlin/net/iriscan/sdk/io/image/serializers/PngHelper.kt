@@ -1,13 +1,18 @@
 package net.iriscan.sdk.io.image.serializers
 
+import com.soywiz.korio.compression.compress
 import com.soywiz.korio.compression.deflate.ZLib
 import com.soywiz.korio.compression.uncompress
 import com.soywiz.korio.stream.*
+import com.soywiz.korio.util.checksum.CRC32
+import kotlinx.io.core.toByteArray
+import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.io.exception.IOException
 import kotlin.math.abs
 
 /**
  * @author Slava Gornostal
+ * @author Anton Kurinnoy
  */
 internal class PngChunkData(
     var width: Int = -1,
@@ -70,4 +75,51 @@ internal fun paethPredictor(a: Int, b: Int, c: Int): Int {
     val pb = abs(p - b)
     val pc = abs(p - c)
     return if ((pa <= pb) && (pa <= pc)) a else if (pb <= pc) b else c
+}
+
+internal fun writeChunk(stream: SyncStream, name: String, image: Image) {
+    var crc = CRC32.initialValue
+
+    when (name) {
+        "IHDR" -> {
+            stream.write32LE(13)
+            stream.writeStringz("IHDR")
+            stream.write32LE(image.width)
+            stream.write32LE(image.height)
+            stream.write8(8) // bitDepth
+            stream.write8(2) // colorType
+            stream.write8(0) // compressionMethod
+            stream.write8(0) // filterMethod
+            stream.write8(0) // interlaceMethod
+
+            crc = CRC32.update(crc, name.toByteArray(), 0, name.toByteArray().size)
+            val writtenData = stream.toByteArray()
+            val data = writtenData.sliceArray(writtenData.size - 13 until writtenData.size)
+            crc = CRC32.update(crc, data, 0, data.size)
+        }
+        "IDAT" -> {
+            val compressedData = MemorySyncStreamToByteArray{
+                val colors = image.colors.toList().chunked(image.width).map { it.toIntArray() }
+                for (y in 0 until image.height) {
+                    write8(0) //no filter
+                    colors[y].forEach { write24BE(it) }
+                }
+                this.toByteArray().compress(ZLib)
+            }
+            stream.write32LE(compressedData.size)
+            stream.writeStringz("IDAT")
+            stream.writeBytes(compressedData)
+            crc = CRC32.update(crc, name.toByteArray(), 0, name.toByteArray().size)
+            crc = CRC32.update(crc, compressedData, 0, compressedData.size)
+        }
+        "IEND" -> {
+            stream.write32LE(0)
+            stream.writeStringz("IEND")
+            crc = CRC32.update(crc, name.toByteArray(), 0, name.toByteArray().size)
+            crc = CRC32.update(crc, byteArrayOf(), 0, 0)
+        }
+        else -> throw IOException("Unknown chunk")
+    }
+
+    stream.write32LE(crc)
 }

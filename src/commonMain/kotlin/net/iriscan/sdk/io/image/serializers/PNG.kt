@@ -14,6 +14,7 @@ import kotlin.math.floor
 
 /**
  * @author Slava Gornostal
+ * @author Anton Kurinnoy
  */
 internal object PNG : ImageSerializer {
 
@@ -89,7 +90,10 @@ internal object PNG : ImageSerializer {
     }
 
     override fun write(image: Image): ByteArray = MemorySyncStreamToByteArray {
-        TODO("Not yet implemented")
+        writeBytes(MAGIC.toByteArray())
+        writeChunk(this, "IHDR", image)
+        writeChunk(this, "IDAT", image)
+        writeChunk(this, "IEND", image)
     }
 
 }

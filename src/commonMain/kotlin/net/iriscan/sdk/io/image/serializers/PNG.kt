@@ -14,6 +14,7 @@ import kotlin.math.floor
 
 /**
  * @author Slava Gornostal
+ * @author Anton Kurinnoy
  */
 internal object PNG : ImageSerializer {
 
@@ -28,6 +29,7 @@ internal object PNG : ImageSerializer {
 
     override fun read(data: ByteArray): Image {
         val stream = MemorySyncStream(data)
+        stream.skip(8) //header
         val pngData = readPngChunks(stream)
         val bytesPerPixel = when (pngData.colorType) {
             2 -> 3
@@ -89,7 +91,10 @@ internal object PNG : ImageSerializer {
     }
 
     override fun write(image: Image): ByteArray = MemorySyncStreamToByteArray {
-        TODO("Not yet implemented")
+        writeBytes(MAGIC.toByteArray())
+        writeChunk(this, "IHDR", image)
+        writeChunk(this, "IDAT", image)
+        writeChunk(this, "IEND", image)
     }
 
 }

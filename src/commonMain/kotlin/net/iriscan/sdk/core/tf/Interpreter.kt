@@ -6,8 +6,9 @@ package net.iriscan.sdk.core.tf
 interface Interpreter {
     fun allocateTensors()
     fun invoke()
-    fun getInputTensor(index: Int): InputTensor
-    fun getOutputTensor(index: Int): OutputTensor
+    fun getTensor(index: Int): Tensor
+    fun <T : Any > getInputTypedTensor(index: Int): InputTensor<T>
+    fun <T : Any> getOutputTypedTensor(index: Int): OutputTensor<T>
 }
 
 expect class InterpreterImpl(model: ByteArray) : Interpreter

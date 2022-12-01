@@ -17,7 +17,7 @@ kotlin {
         }
         withJava()
     }
-    js(IR) {
+    /*js(IR) {
         binaries.executable()
     }
     val hostOs = System.getProperty("os.name")
@@ -37,7 +37,7 @@ kotlin {
                 }
             }
         }
-    }
+    }*/
 
 
     sourceSets {
@@ -55,12 +55,17 @@ kotlin {
                 implementation(kotlin("test"))
             }
         }
-        val jvmMain by getting
+        val jvmMain by getting {
+            dependencies {
+                implementation("org.bytedeco:tensorflow-lite:2.10.0-1.5.8")
+                implementation("org.bytedeco:tensorflow-lite-platform:2.10.0-1.5.8")
+            }
+        }
         val jvmTest by getting
-        val jsMain by getting
+        /*val jsMain by getting
         val jsTest by getting
         val nativeMain by getting
-        val nativeTest by getting
+        val nativeTest by getting*/
     }
 
     publishing {

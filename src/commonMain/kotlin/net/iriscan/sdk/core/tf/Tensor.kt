@@ -3,31 +3,27 @@ package net.iriscan.sdk.core.tf
 /**
  * @author Slava Gornostal
  */
-sealed interface Tensor {
+interface Tensor {
+    fun getType(): TensorType
     fun getShape(): IntArray
-    fun setShape(shape: IntArray)
 }
 
-interface InputTensor : Tensor {
-    fun setBytes(value: ByteArray)
-    fun setInt(value: Int)
-    fun setIntArray(value: IntArray)
-    fun setLong(value: Long)
-    fun setLongArray(value: LongArray)
-    fun setFloat(value: Float)
-    fun setFloatArray(value: FloatArray)
+interface TypedTensor<T>
+
+interface InputTensor<T > : TypedTensor<T> {
+    fun putData(value: T)
+    fun putArrayData(value: Array<T>)
 }
 
-interface OutputTensor : Tensor {
-    fun getBytes(): ByteArray
-    fun getInt(): Int
-    fun getIntArray(): IntArray
-    fun getLong(): Long
-    fun getLongArray(): LongArray
-    fun getFloat(): Float
-    fun getFloatArray(): FloatArray
+interface OutputTensor<T : Any> : TypedTensor<T> {
+    fun getData(): T
+    fun getArrayData(size: Int): Array<T>
 }
 
-expect class InputTensorImpl : InputTensor
+expect class TensorImpl : Tensor
 
-expect class OutputTensorImpl : OutputTensor
+expect class IntInputTensor : InputTensor<Int>
+expect class FloatInputTensor : InputTensor<Float>
+
+expect class IntOutputTensor : OutputTensor<Int>
+expect class FloatOutputTensor : OutputTensor<Float>

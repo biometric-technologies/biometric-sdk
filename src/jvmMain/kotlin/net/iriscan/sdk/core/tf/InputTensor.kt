@@ -1,44 +1,27 @@
 package net.iriscan.sdk.core.tf
 
+import org.bytedeco.javacpp.FloatPointer
+import org.bytedeco.javacpp.IntPointer
+
 /**
  * @author Slava Gornostal
  */
-actual class InputTensorImpl : InputTensor {
-
-    override fun setBytes(value: ByteArray) {
-        TODO("Not yet implemented")
+actual class IntInputTensor(private val tensor: IntPointer) : InputTensor<Int> {
+    override fun putData(value: Int) {
+        tensor.put(value)
     }
 
-    override fun setInt(value: Int) {
-        TODO("Not yet implemented")
+    override fun putArrayData(value: Array<Int>) {
+        tensor.put(value.toIntArray(), 0, value.size)
+    }
+}
+
+actual class FloatInputTensor(private val tensor: FloatPointer) : InputTensor<Float> {
+    override fun putData(value: Float) {
+        tensor.put(value)
     }
 
-    override fun setIntArray(value: IntArray) {
-        TODO("Not yet implemented")
+    override fun putArrayData(value: Array<Float>) {
+        tensor.put(value.toFloatArray(), 0, value.size)
     }
-
-    override fun setLong(value: Long) {
-        TODO("Not yet implemented")
-    }
-
-    override fun setLongArray(value: LongArray) {
-        TODO("Not yet implemented")
-    }
-
-    override fun setFloat(value: Float) {
-        TODO("Not yet implemented")
-    }
-
-    override fun setFloatArray(value: FloatArray) {
-        TODO("Not yet implemented")
-    }
-
-    override fun getShape(): IntArray {
-        TODO("Not yet implemented")
-    }
-
-    override fun setShape(shape: IntArray) {
-        TODO("Not yet implemented")
-    }
-
 }

@@ -10,14 +10,14 @@ interface Tensor {
 
 interface TypedTensor<T>
 
-interface InputTensor<T > : TypedTensor<T> {
+interface InputTensor<T> : Tensor, TypedTensor<T> {
     fun putData(value: T)
     fun putArrayData(value: Array<T>)
 }
 
-interface OutputTensor<T : Any> : TypedTensor<T> {
+interface OutputTensor<T> : Tensor, TypedTensor<T> {
     fun getData(): T
-    fun getArrayData(size: Int): Array<T>
+    fun getArrayData(): Array<T>
 }
 
 expect class TensorImpl : Tensor

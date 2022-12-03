@@ -34,12 +34,16 @@ actual class InterpreterImpl actual constructor(model: ByteArray) : Interpreter 
 
     override fun getTensor(index: Int): Tensor = TensorImpl(interpreter.tensor(index))
 
-    override fun <T : Any> getInputTypedTensor(index: Int): InputTensor<T> {
-        TODO("Not yet implemented")
-    }
+    override fun getInputTensorInt(index: Int): IntInputTensor =
+        IntInputTensor(interpreter.input_tensor(index.toLong()), interpreter.typed_input_tensor_int(index))
 
-    override fun <T : Any> getOutputTypedTensor(index: Int): OutputTensor<T> {
-        TODO("Not yet implemented")
-    }
+    override fun getInputTensorFloat(index: Int): FloatInputTensor =
+        FloatInputTensor(interpreter.input_tensor(index.toLong()), interpreter.typed_input_tensor_float(index))
+
+    override fun getOutputTensorInt(index: Int): IntOutputTensor =
+        IntOutputTensor(interpreter.output_tensor(index.toLong()), interpreter.typed_output_tensor_int(index))
+
+    override fun getOutputTensorFloat(index: Int): FloatOutputTensor =
+        FloatOutputTensor(interpreter.output_tensor(index.toLong()), interpreter.typed_output_tensor_float(index))
 
 }

@@ -1,23 +1,39 @@
 plugins {
     kotlin("multiplatform") version "1.7.10"
+    // kotlin("native.cocoapods") version "1.7.10"
     id("maven-publish")
+    id("com.android.library")
 }
 
 group = "net.iriscan"
 version = "1.0-SNAPSHOT"
 
 repositories {
+    google()
     mavenCentral()
 }
 
 kotlin {
+    android {
+        publishLibraryVariants("debug", "release")
+    }
     jvm {
         compilations.all {
-            kotlinOptions.jvmTarget = "17"
+            kotlinOptions.jvmTarget = "11"
         }
-        withJava()
     }
-    /*js(IR) {
+    /*iosX64()
+    iosArm64()
+    iosSimulatorArm64()
+    cocoapods {
+        summary = "Some description for the Shared Module"
+        homepage = "Link to the Shared Module homepage"
+        ios.deploymentTarget = "15.0"
+        framework {
+            baseName = "BiometricSdk"
+        }
+    }
+    js(IR) {
         binaries.executable()
     }
     val hostOs = System.getProperty("os.name")
@@ -38,7 +54,6 @@ kotlin {
             }
         }
     }*/
-
 
     sourceSets {
         val commonMain by getting {
@@ -62,20 +77,44 @@ kotlin {
             }
         }
         val jvmTest by getting
-        /*val jsMain by getting
+        val androidMain by getting {
+            dependencies {
+                implementation("org.tensorflow:tensorflow-lite:2.10.0")
+                implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
+            }
+        }
+        val androidTest by getting
+        /*
+        val jsMain by getting
         val jsTest by getting
         val nativeMain by getting
         val nativeTest by getting*/
     }
+}
 
-    publishing {
-        publications {
-            create<MavenPublication>("mavenJava") {
-                pom {
-                    name.set("Biometric SDK")
-                    description.set("Biometric SDK")
-                }
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            pom {
+                name.set("Biometric SDK")
+                description.set("Biometric SDK")
             }
         }
+    }
+}
+
+android {
+    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+    compileSdk = 29
+
+    defaultConfig {
+        minSdk = 17
+        targetSdk = 29
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    dependencies {
     }
 }

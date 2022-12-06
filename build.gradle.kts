@@ -81,6 +81,7 @@ kotlin {
             dependencies {
                 implementation("org.tensorflow:tensorflow-lite:2.10.0")
                 implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
+                implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
             }
         }
         val androidTest by getting

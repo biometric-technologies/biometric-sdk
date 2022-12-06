@@ -14,7 +14,7 @@ import net.iriscan.sdk.face.record.FaceTemplateRecord
  */
 internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
     private val extractor = FaceExtractorInternal()
-    private val encoder = FaceEncoderInternal()
+    private val encoder = FaceEncoderInternal(config.faceNetModel)
 
     override fun extractor(): FaceExtractor = object : FaceExtractor {
         override fun extract(sample: FaceImageRecord): FaceImageRecord {

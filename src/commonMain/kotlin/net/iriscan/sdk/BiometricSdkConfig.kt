@@ -12,40 +12,7 @@ import net.iriscan.sdk.iris.IrisMatchProperties
  *
  * SDK configuration object
  */
-class BiometricSdkConfig(val iris: IrisConfig?, val face: FaceConfig?) {
-    companion object {
-        fun builder() = Builder()
-    }
-
-    data class Builder(
-        var irisConfig: IrisConfig? = null,
-        var faceConfig: FaceConfig? = null,
-    ) {
-
-        fun withIris(
-            extractor: IrisExtractProperties = IrisExtractProperties(),
-            encoder: IrisEncodeProperties = IrisEncodeProperties(),
-            matcher: IrisMatchProperties = IrisMatchProperties()
-        ) =
-            apply {
-                this.irisConfig = IrisConfig(extractor, encoder, matcher)
-            }
-
-        fun withFace(
-            extractor: FaceExtractProperties = FaceExtractProperties(),
-            encoder: FaceEncodeProperties = FaceEncodeProperties(),
-            matcher: FaceMatchProperties = FaceMatchProperties()
-        ) = apply {
-            this.faceConfig = FaceConfig(extractor, encoder, matcher)
-        }
-
-        fun build(): BiometricSdkConfig =
-            BiometricSdkConfig(
-                iris = irisConfig,
-                face = faceConfig,
-            )
-    }
-}
+class BiometricSdkConfig(val iris: IrisConfig?, val face: FaceConfig?)
 
 data class IrisConfig(
     val extractor: IrisExtractProperties,
@@ -57,4 +24,21 @@ data class FaceConfig(
     val extractor: FaceExtractProperties,
     val encoder: FaceEncodeProperties,
     val matcher: FaceMatchProperties,
+    val faceNetModel: ByteArray
 )
+
+expect class BiometricSdkConfigBuilder {
+    fun withIris(
+        extractor: IrisExtractProperties,
+        encoder: IrisEncodeProperties,
+        matcher: IrisMatchProperties,
+    )
+
+    fun withFace(
+        extractor: FaceExtractProperties,
+        encoder: FaceEncodeProperties,
+        matcher: FaceMatchProperties
+    )
+
+    fun build(): BiometricSdkConfig
+}

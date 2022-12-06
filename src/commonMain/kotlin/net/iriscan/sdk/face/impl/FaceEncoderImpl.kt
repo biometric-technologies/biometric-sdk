@@ -5,6 +5,6 @@ import net.iriscan.sdk.core.image.Image
 /**
  * @author Slava Gornostal
  */
-internal expect class FaceEncoderInternal() {
+internal expect class FaceEncoderInternal(faceNetModel: ByteArray) {
     fun encode(image: Image): ByteArray
 }

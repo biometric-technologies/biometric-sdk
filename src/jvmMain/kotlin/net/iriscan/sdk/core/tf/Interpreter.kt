@@ -12,38 +12,42 @@ import java.nio.ByteBuffer
  */
 actual class InterpreterImpl actual constructor(model: ByteArray) : Interpreter {
 
-    private val interpreter: org.bytedeco.tensorflowlite.Interpreter =
-        org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
+    private val builder = InterpreterBuilder(
+        FlatBufferModel.BuildFromBuffer(BytePointer(ByteBuffer.wrap(model)), model.size.toLong()),
+        BuiltinOpResolver()
+    )
 
-    init {
-        InterpreterBuilder(
-            FlatBufferModel.BuildFromBuffer(BytePointer(ByteBuffer.wrap(model)), model.size.toLong()),
-            BuiltinOpResolver()
-        ).apply(interpreter)
-    }
-
-    override fun allocateTensors() {
-        interpreter.AllocateTensors()
-            .tfIfErrorThrow("Could not allocate tensors")
-    }
-
-    override fun invoke() {
+    override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>) {
+        val interpreter = org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
+        builder.apply(interpreter)
+        inputs.keys.forEach {
+            when (val data = inputs[it]) {
+                is Int -> interpreter.typed_input_tensor_int(it).put(data)
+                is Float -> interpreter.typed_input_tensor_float(it).put(data)
+                is IntArray -> interpreter.typed_input_tensor_int(it).put(data, 0, data.size)
+                is FloatArray -> interpreter.typed_input_tensor_float(it).put(data, 0, data.size)
+            }
+        }
         interpreter.Invoke()
             .tfIfErrorThrow("Could not invoke model")
+        outputs.keys.forEach {
+            outputs[it] = when (val out = outputs[it]) {
+                is Int -> interpreter.typed_output_tensor_int(it).get()
+                is Float -> interpreter.typed_output_tensor_float(it).get()
+                is IntArray -> {
+                    val ptr = interpreter.typed_output_tensor_int(it)
+                    IntArray(out.size) { i -> ptr.get(i.toLong()) }
+                }
+
+                is FloatArray -> {
+                    val ptr = interpreter.typed_output_tensor_float(it)
+                    FloatArray(out.size) { i -> ptr.get(i.toLong()) }
+                }
+
+                else -> throw IllegalArgumentException("Unsupported tensor type")
+            }
+        }
+        interpreter.close()
     }
-
-    override fun getTensor(index: Int): Tensor = TensorImpl(interpreter.tensor(index))
-
-    override fun getInputTensorInt(index: Int): IntInputTensor =
-        IntInputTensor(interpreter.input_tensor(index.toLong()), interpreter.typed_input_tensor_int(index))
-
-    override fun getInputTensorFloat(index: Int): FloatInputTensor =
-        FloatInputTensor(interpreter.input_tensor(index.toLong()), interpreter.typed_input_tensor_float(index))
-
-    override fun getOutputTensorInt(index: Int): IntOutputTensor =
-        IntOutputTensor(interpreter.output_tensor(index.toLong()), interpreter.typed_output_tensor_int(index))
-
-    override fun getOutputTensorFloat(index: Int): FloatOutputTensor =
-        FloatOutputTensor(interpreter.output_tensor(index.toLong()), interpreter.typed_output_tensor_float(index))
 
 }

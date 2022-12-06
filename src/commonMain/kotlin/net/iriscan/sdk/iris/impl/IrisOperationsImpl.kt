@@ -1,6 +1,6 @@
 package net.iriscan.sdk.iris.impl
 
-import net.iriscan.sdk.BiometricSdkConfig
+import net.iriscan.sdk.IrisConfig
 import net.iriscan.sdk.core.algorithm.BiometricAlgorithmProperties
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.iris.*
@@ -10,7 +10,7 @@ import net.iriscan.sdk.iris.record.IrisTemplateRecord
 /**
  * @author Slava Gornostal
  */
-internal class IrisOperationsImpl(private val sdkConfig: BiometricSdkConfig) : IrisOperations {
+internal class IrisOperationsImpl(private val config: IrisConfig) : IrisOperations {
 
     override fun extractor(): IrisExtractor = object : IrisExtractor {
         override fun extract(sample: IrisImageRecord): IrisImageRecord {
@@ -22,7 +22,7 @@ internal class IrisOperationsImpl(private val sdkConfig: BiometricSdkConfig) : I
         }
 
         override fun extract(sample: Image): Image =
-            extractInternal(sample, sdkConfig.iris.extractor)
+            extractInternal(sample, config.extractor)
 
         override fun extract(sample: Image, props: BiometricAlgorithmProperties): Image {
             require(props is IrisExtractProperties)
@@ -40,8 +40,8 @@ internal class IrisOperationsImpl(private val sdkConfig: BiometricSdkConfig) : I
         }
 
         override fun extractAndEncode(sample: Image): ByteArray {
-            val texture = extractInternal(sample, sdkConfig.iris.extractor)
-            return encodeInternal(texture, sdkConfig.iris.encoder)
+            val texture = extractInternal(sample, config.extractor)
+            return encodeInternal(texture, config.encoder)
         }
 
         override fun extractAndEncode(
@@ -55,7 +55,7 @@ internal class IrisOperationsImpl(private val sdkConfig: BiometricSdkConfig) : I
             return encodeInternal(texture, encodeProps)
         }
 
-        override fun encode(sample: Image): ByteArray = encodeInternal(sample, sdkConfig.iris.encoder)
+        override fun encode(sample: Image): ByteArray = encodeInternal(sample, config.encoder)
 
         override fun encode(sample: Image, props: BiometricAlgorithmProperties): ByteArray {
             require(props is IrisEncodeProperties)
@@ -89,7 +89,7 @@ internal class IrisOperationsImpl(private val sdkConfig: BiometricSdkConfig) : I
         }
 
         override fun matches(sample1: ByteArray, sample2: ByteArray): Boolean =
-            matchInternal(sample1, sample2) >= sdkConfig.iris.matcher.threshold
+            matchInternal(sample1, sample2) >= config.matcher.threshold
 
         override fun matches(sample1: ByteArray, sample2: ByteArray, props: BiometricAlgorithmProperties): Boolean {
             require(props is IrisMatchProperties)

@@ -1,6 +1,7 @@
 package net.iriscan.sdk
 
 import net.iriscan.sdk.face.FaceOperations
+import net.iriscan.sdk.face.impl.FaceOperationsImpl
 import net.iriscan.sdk.io.InputOutputOperations
 import net.iriscan.sdk.io.InputOutputOperationsImpl
 import net.iriscan.sdk.iris.IrisOperations
@@ -32,9 +33,14 @@ private class BiometricSdkOperationsImpl(val config: BiometricSdkConfig) : Biome
         TODO("Not implemented yet")
     }
 
-    override fun iris(): IrisOperations = IrisOperationsImpl(config)
-    override fun face(): FaceOperations {
-        TODO("Not implemented yet")
+    override fun iris(): IrisOperations = when (config.iris) {
+        null -> throw IllegalStateException("Please initialize SDK with iris first")
+        else -> IrisOperationsImpl(config.iris)
+    }
+
+    override fun face(): FaceOperations = when (config.face) {
+        null -> throw IllegalStateException("Please initialize SDK with face first")
+        else -> FaceOperationsImpl(config.face)
     }
 
 }

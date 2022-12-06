@@ -11,10 +11,13 @@ import net.iriscan.sdk.io.record.impl.InputOutputRecordOperationsImpl
  *
  * @see InputOutputRecordOperations
  * @see InputOutputImageOperations
+ * @see InputOutputImageConvertOperations
  */
-interface InputOutputOperations : InputOutputRecordOperations, InputOutputImageOperations
+interface InputOutputOperations : InputOutputRecordOperations, InputOutputImageOperations,
+    InputOutputImageConvertOperations
 
 internal class InputOutputOperationsImpl :
     InputOutputImageOperations by InputOutputImageOperationsImpl(),
+    InputOutputImageConvertOperations by InputOutputImageConvertOperationsImpl(),
     InputOutputRecordOperations by InputOutputRecordOperationsImpl(),
     InputOutputOperations

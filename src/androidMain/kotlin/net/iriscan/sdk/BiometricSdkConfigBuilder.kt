@@ -16,21 +16,23 @@ actual class BiometricSdkConfigBuilder(private val context: Context) {
         extractor: IrisExtractProperties,
         encoder: IrisEncodeProperties,
         matcher: IrisMatchProperties
-    ) {
+    ): BiometricSdkConfigBuilder {
         this.irisConfig = IrisConfig(extractor, encoder, matcher)
+        return this
     }
 
     actual fun withFace(
         extractor: FaceExtractProperties,
         encoder: FaceEncodeProperties,
         matcher: FaceMatchProperties
-    ) {
+    ): BiometricSdkConfigBuilder {
         this.faceConfig = FaceConfig(
             extractor,
             encoder,
             matcher,
             context.assets.open("facenet.tflite").readBytes()
         )
+        return this
     }
 
     actual fun build(): BiometricSdkConfig = BiometricSdkConfig(this.irisConfig, this.faceConfig)

@@ -76,29 +76,37 @@ kotlin {
                 implementation("org.bytedeco:tensorflow-lite-platform:2.10.0-1.5.8")
             }
         }
-        val jvmTest by getting
         val androidMain by getting {
             dependencies {
                 implementation("org.tensorflow:tensorflow-lite:2.10.0")
                 implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
-                implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
+                implementation("com.google.mlkit:face-detection:16.1.5")
             }
         }
-        val androidTest by getting
         /*
         val jsMain by getting
         val jsTest by getting
         val nativeMain by getting
         val nativeTest by getting*/
     }
-}
 
-publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            pom {
-                name.set("Biometric SDK")
-                description.set("Biometric SDK")
+    publishing {
+        publications {
+            publications.withType<MavenPublication> {
+                pom {
+
+                    name.set("Biometric SDK")
+                    description.set("Biometric SDK Library")
+                    url.set("https://github.com/")
+
+                    developers {
+                        developer {
+                            id.set("sgornostal")
+                            name.set("Slava Gornostal")
+                            email.set("slava.gornostal@iriscan.net")
+                        }
+                    }
+                }
             }
         }
     }
@@ -106,11 +114,11 @@ publishing {
 
 android {
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    compileSdk = 29
+    compileSdk = 33
 
     defaultConfig {
-        minSdk = 17
-        targetSdk = 29
+        minSdk = 24
+        targetSdk = 33
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8

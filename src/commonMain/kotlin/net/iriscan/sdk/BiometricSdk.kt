@@ -9,7 +9,7 @@ interface BiometricSdk {
     /**
      * Initialized SDK, should be called before using any operations
      * */
-    fun configure(config: BiometricSdkConfig? = null)
+    fun configure(config: BiometricSdkConfig)
 
     /**
      * Get SDK operations

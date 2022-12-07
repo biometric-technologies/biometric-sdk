@@ -14,9 +14,8 @@ internal actual class FaceExtractorInternal {
     private val detector = FaceDetection.getClient()
     actual fun extract(image: Image): Image {
         val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.RGB_565)
-        bitmap.setPixels(image.colors, 0, 0, 0, 0, image.width, image.height)
+        bitmap.setPixels(image.colors, 0, image.width, 0, 0, image.width, image.height)
         val input = InputImage.fromBitmap(bitmap, 0)
-        bitmap.recycle()
         val result = Tasks.await(detector.process(input))
         if (result.isEmpty()) {
             throw BiometricNotFoundException("Face was not found on the image")

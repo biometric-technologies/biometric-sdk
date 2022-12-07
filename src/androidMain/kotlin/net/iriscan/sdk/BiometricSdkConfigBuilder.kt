@@ -30,7 +30,7 @@ actual class BiometricSdkConfigBuilder(private val context: Context) {
             extractor,
             encoder,
             matcher,
-            context.assets.open("facenet.tflite").readBytes()
+            context.assets.open(encoder.tfliteModelPath).readBytes()
         )
         return this
     }

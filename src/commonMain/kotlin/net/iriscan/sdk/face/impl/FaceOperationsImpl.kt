@@ -45,13 +45,10 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
         }
 
         override fun matches(sample1: ByteArray, vararg samples: ByteArray): Boolean {
-            for (sample in samples) {
-                val score = matchFacentMasksInternal(sample1, sample)
-                if (score >= config.matcher.threshold) {
-                    return true
-                }
-            }
-            return false
+            val scoreAvg = samples.toList()
+                .map { matchFaceNetTemplatesInternal(sample1, it) }
+                .average()
+            return scoreAvg <= config.matcher.threshold
         }
 
     }

@@ -12,13 +12,13 @@ import net.iriscan.sdk.qc.QualityControlOperations
  * @author Slava Gornostal
  */
 object BiometricSdkFactory : BiometricSdk {
-    private val defaultConfig = BiometricSdkConfig.builder().build()
+
     private var instanceRef: BiometricSdkOperations? = null
-    override fun configure(config: BiometricSdkConfig?) {
+    override fun configure(config: BiometricSdkConfig) {
         if (instanceRef != null) {
             return
         }
-        this.instanceRef = BiometricSdkOperationsImpl(config ?: defaultConfig)
+        this.instanceRef = BiometricSdkOperationsImpl(config)
     }
 
     override fun getInstance(): BiometricSdkOperations =

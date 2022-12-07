@@ -32,13 +32,13 @@ expect class BiometricSdkConfigBuilder {
         extractor: IrisExtractProperties,
         encoder: IrisEncodeProperties,
         matcher: IrisMatchProperties,
-    )
+    ): BiometricSdkConfigBuilder
 
     fun withFace(
         extractor: FaceExtractProperties,
         encoder: FaceEncodeProperties,
         matcher: FaceMatchProperties
-    )
+    ): BiometricSdkConfigBuilder
 
     fun build(): BiometricSdkConfig
 }

@@ -1,5 +1,7 @@
 package net.iriscan.sdk.core.tf
 
+import org.tensorflow.lite.gpu.CompatibilityList
+import org.tensorflow.lite.gpu.GpuDelegate
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -10,7 +12,14 @@ actual class InterpreterImpl actual constructor(model: ByteArray) : Interpreter 
         val modelBuffer = ByteBuffer.allocateDirect(model.size)
         modelBuffer.order(ByteOrder.nativeOrder())
         modelBuffer.put(model)
-        interpreter = org.tensorflow.lite.Interpreter(modelBuffer)
+        val options = org.tensorflow.lite.Interpreter.Options().apply {
+            if (CompatibilityList().isDelegateSupportedOnThisDevice) {
+                this.addDelegate(GpuDelegate())
+            } else {
+                this.numThreads = 4
+            }
+        }
+        interpreter = org.tensorflow.lite.Interpreter(modelBuffer, options)
     }
 
     override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>) {

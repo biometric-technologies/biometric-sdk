@@ -63,6 +63,7 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
                 implementation("com.soywiz.korlibs.korio:korio:2.2.0")
+                implementation("io.ktor:ktor-client-okhttp:2.2.1")
             }
         }
         val commonTest by getting {
@@ -79,6 +80,7 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation("org.tensorflow:tensorflow-lite:2.10.0")
+                implementation("org.tensorflow:tensorflow-lite-gpu:2.10.0")
                 implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
                 implementation("com.google.mlkit:face-detection:16.1.5")
             }

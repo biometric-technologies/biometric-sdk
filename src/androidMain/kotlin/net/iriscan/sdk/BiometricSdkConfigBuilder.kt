@@ -1,6 +1,7 @@
 package net.iriscan.sdk
 
 import android.content.Context
+import net.iriscan.sdk.core.io.ResourceHelper
 import net.iriscan.sdk.face.FaceEncodeProperties
 import net.iriscan.sdk.face.FaceExtractProperties
 import net.iriscan.sdk.face.FaceMatchProperties
@@ -8,7 +9,8 @@ import net.iriscan.sdk.iris.IrisEncodeProperties
 import net.iriscan.sdk.iris.IrisExtractProperties
 import net.iriscan.sdk.iris.IrisMatchProperties
 
-actual class BiometricSdkConfigBuilder(private val context: Context) {
+actual class BiometricSdkConfigBuilder(context: Context) {
+    private val resourceHelper = ResourceHelper(context)
     private var irisConfig: IrisConfig? = null
     private var faceConfig: FaceConfig? = null
 
@@ -30,7 +32,7 @@ actual class BiometricSdkConfigBuilder(private val context: Context) {
             extractor,
             encoder,
             matcher,
-            context.assets.open(encoder.tfliteModelPath).readBytes()
+            resourceHelper.getCached("facenet-model.tflite", encoder.faceNetModel.tfliteModelPath)
         )
         return this
     }

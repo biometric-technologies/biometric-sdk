@@ -10,10 +10,22 @@ class FaceExtractProperties : BiometricAlgorithmProperties {
 }
 
 class FaceEncodeProperties(
-    val tfliteModelPath: String = "facenet.tflite"
+    val faceNetModel: FaceNetModelConfiguration = FaceNetModelConfiguration(
+        tfliteModelPath = "resources://facenet-default.tflite",
+        inputWidth = 160,
+        inputHeight = 160,
+        outputLength = 128
+    )
 ) : BiometricAlgorithmProperties {
     override fun asMap(): Map<String, Any> = mapOf()
 }
+
+class FaceNetModelConfiguration(
+    val tfliteModelPath: String,
+    val inputWidth: Int,
+    val inputHeight: Int,
+    val outputLength: Int
+)
 
 class FaceMatchProperties(
     val threshold: Double = 10.0

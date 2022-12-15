@@ -3,6 +3,7 @@ package net.iriscan.sdk.face.impl
 import android.graphics.Bitmap
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.tf.InterpreterImpl
+import net.iriscan.sdk.face.FaceNetModelConfiguration
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.common.TensorOperator
 import org.tensorflow.lite.support.image.ImageProcessor
@@ -18,10 +19,13 @@ import kotlin.math.sqrt
 /**
  * @author Slava Gornostal
  */
-internal actual class FaceEncoderInternal actual constructor(faceNetModel: ByteArray) {
+internal actual class FaceEncoderInternal actual constructor(
+    faceNetModel: ByteArray,
+    private val faceNetModelConfig: FaceNetModelConfiguration
+) {
     private val interpreter = InterpreterImpl(faceNetModel)
     private val imageTensorProcessor = ImageProcessor.Builder()
-        .add(ResizeOp(160, 160, ResizeOp.ResizeMethod.BILINEAR))
+        .add(ResizeOp(faceNetModelConfig.inputHeight, faceNetModelConfig.inputWidth, ResizeOp.ResizeMethod.BILINEAR))
         .add(StandardizeOp())
         .build()
 
@@ -32,7 +36,7 @@ internal actual class FaceEncoderInternal actual constructor(faceNetModel: ByteA
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(bitmap)).buffer
         bitmap.recycle()
         val faceNetModelInputs = mapOf(0 to imageBytes)
-        val faceNetModelOutputs = mutableMapOf<Int, Any>(0 to Array(1) { FloatArray(128) })
+        val faceNetModelOutputs = mutableMapOf<Int, Any>(0 to Array(1) { FloatArray(faceNetModelConfig.outputLength) })
         interpreter.invoke(faceNetModelInputs, faceNetModelOutputs)
         val template = (faceNetModelOutputs[0] as Array<FloatArray>)[0]
         val bb = ByteBuffer.allocate(template.size * 4)

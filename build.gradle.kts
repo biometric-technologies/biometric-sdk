@@ -3,10 +3,11 @@ plugins {
     // kotlin("native.cocoapods") version "1.7.10"
     id("maven-publish")
     id("com.android.library")
+    id("convention.publication")
 }
 
 group = "net.iriscan"
-version = "1.0-SNAPSHOT"
+version = "0.1"
 
 repositories {
     google()
@@ -90,27 +91,6 @@ kotlin {
         val jsTest by getting
         val nativeMain by getting
         val nativeTest by getting*/
-    }
-
-    publishing {
-        publications {
-            publications.withType<MavenPublication> {
-                pom {
-
-                    name.set("Biometric SDK")
-                    description.set("Biometric SDK Library")
-                    url.set("https://github.com/")
-
-                    developers {
-                        developer {
-                            id.set("sgornostal")
-                            name.set("Slava Gornostal")
-                            email.set("slava.gornostal@iriscan.net")
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

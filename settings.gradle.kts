@@ -13,5 +13,7 @@ pluginManagement {
     }
 }
 
+includeBuild("convention-plugins")
+
 rootProject.name = "biometric-sdk"
 

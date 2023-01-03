@@ -1,9 +1,9 @@
 # About
-Biometric SDK is complete open-source solutions for different modals.
+Biometric SDK is a complete open-source Software Development Kit for different biometric modalities.
 
 # Structure
 
-NOTE: Some modules are still unavailable.
+NOTE: Some modules are unavailable yet.
 
 * `io` – defines functionality for working with images and biometric files.
 * `iris` – provides functionality for working with IRIS biometrics.

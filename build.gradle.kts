@@ -1,13 +1,13 @@
 plugins {
-    kotlin("multiplatform") version "1.7.10"
-    // kotlin("native.cocoapods") version "1.7.10"
+    kotlin("multiplatform") version "1.7.21"
+    kotlin("native.cocoapods") version "1.7.21"
     id("maven-publish")
     id("com.android.library")
     id("convention.publication")
 }
 
 group = "net.iriscan"
-version = "0.1"
+version = "0.2"
 
 repositories {
     google()
@@ -23,18 +23,26 @@ kotlin {
             kotlinOptions.jvmTarget = "11"
         }
     }
-    /*iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    val iosTarget: (String, org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget.() -> Unit) -> org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget =
+        if (System.getenv("SDK_NAME")?.startsWith("iphoneos") == true)
+            ::iosArm64
+        else
+            ::iosX64
+
+    iosTarget("ios") {}
+
     cocoapods {
-        summary = "Some description for the Shared Module"
-        homepage = "Link to the Shared Module homepage"
+        summary = "Biometric SDK"
+        homepage = "https://iriscan.net"
         ios.deploymentTarget = "15.0"
         framework {
             baseName = "BiometricSdk"
+            isStatic = true
         }
+        pod(name = "TensorFlowLiteObjC", moduleName = "TFLTensorFlowLite", version = "2.11.0")
     }
-    js(IR) {
+
+    /*js(IR) {
         binaries.executable()
     }
     val hostOs = System.getProperty("os.name")
@@ -64,12 +72,8 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
                 implementation("com.soywiz.korlibs.korio:korio:2.2.0")
-                implementation("io.ktor:ktor-client-okhttp:2.2.1")
-            }
-        }
-        val commonTest by getting {
-            dependencies {
-                implementation(kotlin("test"))
+                implementation("io.ktor:ktor-client-core:2.2.1")
+                implementation("io.github.aakira:napier:2.6.1")
             }
         }
         val jvmMain by getting {
@@ -84,8 +88,15 @@ kotlin {
                 implementation("org.tensorflow:tensorflow-lite-gpu:2.10.0")
                 implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
                 implementation("com.google.mlkit:face-detection:16.1.5")
+                implementation("io.ktor:ktor-client-okhttp:2.2.1")
             }
         }
+        val iosMain by getting {
+            dependencies {
+                implementation("io.ktor:ktor-client-darwin:2.2.1")
+            }
+        }
+
         /*
         val jsMain by getting
         val jsTest by getting
@@ -107,5 +118,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_1_8
     }
     dependencies {
+    }
+}
+
+kotlin.targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
+    binaries.all {
+        freeCompilerArgs += "-Xdisable-phases=EscapeAnalysis"
     }
 }

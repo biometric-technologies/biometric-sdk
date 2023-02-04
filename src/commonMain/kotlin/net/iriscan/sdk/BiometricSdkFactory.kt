@@ -27,7 +27,11 @@ object BiometricSdkFactory : BiometricSdk {
 
 private class BiometricSdkOperationsImpl(val config: BiometricSdkConfig) : BiometricSdkOperations {
 
-    override fun io(): InputOutputOperations = InputOutputOperationsImpl()
+    private val ioOperations = lazy { InputOutputOperationsImpl() }
+    private val irisOperations = lazy { IrisOperationsImpl(config.iris!!) }
+    private val faceOperations = lazy { FaceOperationsImpl(config.face!!) }
+
+    override fun io(): InputOutputOperations = ioOperations.value
 
     override fun qualityControl(): QualityControlOperations {
         TODO("Not implemented yet")
@@ -35,12 +39,12 @@ private class BiometricSdkOperationsImpl(val config: BiometricSdkConfig) : Biome
 
     override fun iris(): IrisOperations = when (config.iris) {
         null -> throw IllegalStateException("Please initialize SDK with iris first")
-        else -> IrisOperationsImpl(config.iris)
+        else -> irisOperations.value
     }
 
     override fun face(): FaceOperations = when (config.face) {
         null -> throw IllegalStateException("Please initialize SDK with face first")
-        else -> FaceOperationsImpl(config.face)
+        else -> faceOperations.value
     }
 
 }

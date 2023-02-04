@@ -24,7 +24,6 @@ data class FaceConfig(
     val extractor: FaceExtractProperties,
     val encoder: FaceEncodeProperties,
     val matcher: FaceMatchProperties,
-    val faceNetModel: ByteArray
 )
 
 expect class BiometricSdkConfigBuilder {

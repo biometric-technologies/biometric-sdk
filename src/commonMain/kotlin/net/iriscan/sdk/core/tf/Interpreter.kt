@@ -7,4 +7,4 @@ interface Interpreter {
     fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>)
 }
 
-expect class InterpreterImpl(model: ByteArray) : Interpreter
+expect class InterpreterImpl(modelPath: String) : Interpreter

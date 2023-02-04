@@ -1,9 +1,8 @@
 package net.iriscan.sdk.iris
 
-import net.iriscan.sdk.core.algorithm.BiometricAlgorithmProperties
 import net.iriscan.sdk.core.image.Image
-import net.iriscan.sdk.iris.record.IrisImageRecord
-import net.iriscan.sdk.iris.record.IrisTemplateRecord
+import net.iriscan.sdk.core.io.DataBytes
+import net.iriscan.sdk.core.record.BiometricRecord
 
 /**
  * @author Slava Gornostal
@@ -14,33 +13,20 @@ interface IrisEncoder {
     /**
      * Encodes provided extracted record to biometric template record
      * */
-    fun encode(sample: IrisImageRecord): IrisTemplateRecord
-    fun encode(sample: IrisImageRecord, props: BiometricAlgorithmProperties): IrisTemplateRecord
+    fun encode(sample: BiometricRecord): BiometricRecord
 
     /**
      * Extracts and encodes provided image to iris template
      * */
-    fun extractAndEncode(sample: IrisImageRecord): ByteArray
-    fun extractAndEncode(
-        sample: IrisImageRecord,
-        extractProps: BiometricAlgorithmProperties,
-        encodeProps: BiometricAlgorithmProperties
-    ): ByteArray
+    fun extractAndEncode(sample: BiometricRecord): DataBytes
 
     /**
      * Encodes provided extracted image to iris template
      * */
-    fun encode(sample: Image): ByteArray
-    fun encode(sample: Image, props: BiometricAlgorithmProperties): ByteArray
-
+    fun encode(sample: Image): DataBytes
 
     /**
      * Extracts and encodes provided image to iris template
      * */
-    fun extractAndEncode(sample: Image): ByteArray
-    fun extractAndEncode(
-        sample: Image,
-        extractProps: BiometricAlgorithmProperties,
-        encodeProps: BiometricAlgorithmProperties
-    ): ByteArray
+    fun extractAndEncode(sample: Image): DataBytes
 }

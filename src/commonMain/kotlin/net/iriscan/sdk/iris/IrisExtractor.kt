@@ -1,8 +1,7 @@
 package net.iriscan.sdk.iris
 
-import net.iriscan.sdk.core.algorithm.BiometricAlgorithmProperties
 import net.iriscan.sdk.core.image.Image
-import net.iriscan.sdk.iris.record.IrisImageRecord
+import net.iriscan.sdk.core.record.BiometricRecord
 
 /**
  * @author Slava Gornostal
@@ -13,12 +12,10 @@ interface IrisExtractor {
     /**
      * Extracts biometric data from biometric image record
      * */
-    fun extract(sample: IrisImageRecord): IrisImageRecord
-    fun extract(sample: IrisImageRecord, props: BiometricAlgorithmProperties): IrisImageRecord
+    fun extract(sample: BiometricRecord): BiometricRecord
 
     /**
      * Extracts biometric data from raw image
      * */
     fun extract(sample: Image): Image
-    fun extract(sample: Image, props: BiometricAlgorithmProperties): Image
 }

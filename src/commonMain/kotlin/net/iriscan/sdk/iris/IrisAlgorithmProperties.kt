@@ -1,7 +1,5 @@
 package net.iriscan.sdk.iris
 
-import net.iriscan.sdk.core.algorithm.BiometricAlgorithmProperties
-
 /**
  * @author Slava Gornostal
  */
@@ -25,22 +23,21 @@ class IrisExtractProperties(
     val irisRadiusStep: Int = 4,
     val irisRadiusCalculationSteps: Int = 3,
     val irisAnglesToSearch: Array<ClosedRange<Double>> = arrayOf(45.0..135.0, 225.0..315.0),
-) : BiometricAlgorithmProperties {
+) {
+    companion object {
 
-    override fun asMap(): Map<String, Any> = mapOf()
+    }
 }
 
 class IrisEncodeProperties(
     val templateWidth: Int = 32,
     val templateHeight: Int = 4,
-) : BiometricAlgorithmProperties {
+) {
+    companion object {
 
-    override fun asMap(): Map<String, Any> = mapOf()
+    }
 }
 
 class IrisMatchProperties(
     val threshold: Double = 0.7 // 0.0-1.0
-) : BiometricAlgorithmProperties {
-
-    override fun asMap(): Map<String, Any> = mapOf()
-}
+)

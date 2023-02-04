@@ -1,7 +1,7 @@
 package net.iriscan.sdk.iris
 
-import net.iriscan.sdk.core.algorithm.BiometricAlgorithmProperties
-import net.iriscan.sdk.iris.record.IrisTemplateRecord
+import net.iriscan.sdk.core.io.DataBytes
+import net.iriscan.sdk.core.record.BiometricRecord
 
 /**
  * @author Slava Gornostal
@@ -11,13 +11,13 @@ interface IrisMatcher {
      * Matches one biometric record template with other
      * @return true if they matches
      * */
-    fun matches(sample1: IrisTemplateRecord, sample2: IrisTemplateRecord): Boolean
-    fun matches(sample1: IrisTemplateRecord, sample2: IrisTemplateRecord, props: BiometricAlgorithmProperties): Boolean
+    fun matches(sample1: BiometricRecord, sample2: BiometricRecord): Boolean
+    fun matchesAny(sample1: BiometricRecord, samples: List<BiometricRecord>): Boolean
 
     /**
      * Matches one template with other
      * @return true if they matches
      * */
-    fun matches(sample1: ByteArray, sample2: ByteArray): Boolean
-    fun matches(sample1: ByteArray, sample2: ByteArray, props: BiometricAlgorithmProperties): Boolean
+    fun matches(sample1: DataBytes, sample2: DataBytes): Boolean
+    fun matchesAny(sample1: DataBytes, samples: List<DataBytes>): Boolean
 }

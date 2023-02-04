@@ -8,3 +8,9 @@ actual class ResourceHelper {
         TODO("Not yet implemented")
     }
 }
+
+actual object ResourceHelperFactory {
+    actual fun getInstance(): ResourceHelper {
+        TODO("Not yet implemented")
+    }
+}

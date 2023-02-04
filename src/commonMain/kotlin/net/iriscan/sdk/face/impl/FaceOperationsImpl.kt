@@ -2,6 +2,7 @@ package net.iriscan.sdk.face.impl
 
 import net.iriscan.sdk.FaceConfig
 import net.iriscan.sdk.core.image.Image
+import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.face.FaceEncoder
 import net.iriscan.sdk.face.FaceExtractor
 import net.iriscan.sdk.face.FaceMatcher
@@ -14,7 +15,7 @@ import net.iriscan.sdk.face.record.FaceTemplateRecord
  */
 internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
     private val extractor = FaceExtractorInternal()
-    private val encoder = FaceEncoderInternal(config.faceNetModel, config.encoder.faceNetModel)
+    private val encoder = FaceEncoderInternal(config.encoder.faceNetModel)
 
     override fun extractor(): FaceExtractor = object : FaceExtractor {
         override fun extract(sample: FaceImageRecord): FaceImageRecord {
@@ -29,13 +30,13 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
             TODO("Not implemented yet")
         }
 
-        override fun encode(sample: Image): ByteArray = encoder.encode(sample)
+        override fun encode(sample: Image): DataBytes = encoder.encode(sample)
 
         override fun extractAndEncode(sample: FaceImageRecord): FaceTemplateRecord {
             TODO("Not implemented yet")
         }
 
-        override fun extractAndEncode(sample: Image): ByteArray = encoder.encode(extractor.extract(sample))
+        override fun extractAndEncode(sample: Image): DataBytes = encoder.encode(extractor.extract(sample))
 
     }
 
@@ -44,8 +45,15 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
             TODO("Not implemented yet")
         }
 
-        override fun matches(sample1: ByteArray, vararg samples: ByteArray): Boolean {
-            val scoreAvg = samples.toList()
+        override fun matches(sample1: DataBytes, sample2: DataBytes): Boolean =
+            matchFaceNetTemplatesInternal(sample1, sample2) <= config.matcher.threshold
+
+        override fun matchesAny(sample1: FaceTemplateRecord, samples: List<FaceTemplateRecord>): Boolean {
+            TODO("Not implemented yet")
+        }
+
+        override fun matchesAny(sample1: DataBytes, samples: List<DataBytes>): Boolean {
+            val scoreAvg = samples
                 .map { matchFaceNetTemplatesInternal(sample1, it) }
                 .average()
             return scoreAvg <= config.matcher.threshold

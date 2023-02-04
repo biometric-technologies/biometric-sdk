@@ -1,6 +1,7 @@
 package net.iriscan.sdk.face.impl
 
 import android.graphics.Bitmap
+import io.ktor.util.*
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.tf.InterpreterImpl
 import net.iriscan.sdk.face.FaceNetModelConfiguration
@@ -20,10 +21,9 @@ import kotlin.math.sqrt
  * @author Slava Gornostal
  */
 internal actual class FaceEncoderInternal actual constructor(
-    faceNetModel: ByteArray,
     private val faceNetModelConfig: FaceNetModelConfiguration
 ) {
-    private val interpreter = InterpreterImpl(faceNetModel)
+    private val interpreter = InterpreterImpl(faceNetModelConfig.tfliteModelPath)
     private val imageTensorProcessor = ImageProcessor.Builder()
         .add(ResizeOp(faceNetModelConfig.inputHeight, faceNetModelConfig.inputWidth, ResizeOp.ResizeMethod.BILINEAR))
         .add(StandardizeOp())

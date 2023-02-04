@@ -1,6 +1,7 @@
 package net.iriscan.sdk.face
 
 import net.iriscan.sdk.core.image.Image
+import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.face.record.FaceImageRecord
 import net.iriscan.sdk.face.record.FaceTemplateRecord
 
@@ -23,10 +24,10 @@ interface FaceEncoder {
     /**
      * Encodes provided image to face template
      * */
-    fun encode(sample: Image): ByteArray
+    fun encode(sample: Image): DataBytes
 
     /**
      * Extracts and encodes provided record to face template record
      * */
-    fun extractAndEncode(sample: Image): ByteArray
+    fun extractAndEncode(sample: Image): DataBytes
 }

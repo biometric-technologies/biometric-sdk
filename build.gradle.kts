@@ -23,46 +23,27 @@ kotlin {
             kotlinOptions.jvmTarget = "11"
         }
     }
-    val iosTarget: (String, org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget.() -> Unit) -> org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget =
-        if (System.getenv("SDK_NAME")?.startsWith("iphoneos") == true)
-            ::iosArm64
-        else
-            ::iosX64
 
-    iosTarget("ios") {}
+    ios()
+    iosArm64()
+    iosX64()
 
     cocoapods {
+        name = "BiometricSdk"
         summary = "Biometric SDK"
         homepage = "https://iriscan.net"
-        ios.deploymentTarget = "15.0"
+
+        license = "{ :type => 'GPL-3.0', :text => 'GNU General Public License v3.0' }"
+        source = "{ :git => 'https://github.com/biometric-technologies/biometric-sdk.git', :tag => '$version' }"
+        authors = "Slava Gornostal"
+
+        ios.deploymentTarget = "11.0"
         framework {
             baseName = "BiometricSdk"
             isStatic = true
         }
         pod(name = "TensorFlowLiteObjC", moduleName = "TFLTensorFlowLite", version = "2.11.0")
     }
-
-    /*js(IR) {
-        binaries.executable()
-    }
-    val hostOs = System.getProperty("os.name")
-    val isMingwX64 = hostOs.startsWith("Windows")
-    val nativeTarget = when {
-        hostOs == "Mac OS X" -> macosX64("native")
-        hostOs == "Linux" -> linuxX64("native")
-        isMingwX64 -> mingwX64("native")
-        else -> throw GradleException("Host OS is not supported in Kotlin/Native.")
-    }
-    nativeTarget.apply {
-        binaries {
-            sharedLib {
-                baseName = when (isMingwX64) {
-                    true -> "libbiometric"
-                    false -> "biometric"
-                }
-            }
-        }
-    }*/
 
     sourceSets {
         val commonMain by getting {
@@ -91,17 +72,17 @@ kotlin {
                 implementation("io.ktor:ktor-client-okhttp:2.2.1")
             }
         }
+        val iosArm64Main by getting
+        val iosX64Main by getting
+
         val iosMain by getting {
+            dependsOn(commonMain)
             dependencies {
                 implementation("io.ktor:ktor-client-darwin:2.2.1")
             }
+            iosArm64Main.dependsOn(this)
+            iosX64Main.dependsOn(this)
         }
-
-        /*
-        val jsMain by getting
-        val jsTest by getting
-        val nativeMain by getting
-        val nativeTest by getting*/
     }
 }
 

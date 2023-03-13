@@ -1,9 +1,12 @@
 package net.iriscan.sdk.core.io
 
+import com.soywiz.korio.util.checksum.CRC32
+import com.soywiz.korio.util.checksum.compute
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.runBlocking
+import net.iriscan.sdk.io.exception.IOException
 import net.iriscan.sdk.utils.throwError
 import net.iriscan.sdk.utils.toByteArray
 import net.iriscan.sdk.utils.toNSData
@@ -24,7 +27,7 @@ actual class ResourceHelper {
 
     actual fun read(url: String): ByteArray = readUrl(url)
 
-    actual fun cacheAndRead(name: String, url: String): ByteArray {
+    actual fun cacheAndRead(name: String, url: String, checksum: Int): ByteArray {
         if (url.startsWith("assets://")) {
             return readUrl(url)
         }
@@ -33,11 +36,14 @@ actual class ResourceHelper {
             return NSData.dataWithContentsOfFile(pathToSave)!!.toByteArray()
         }
         val modelData = readUrl(url)
+        if (checksum > 0) {
+            checkCrc32(modelData, checksum)
+        }
         NSFileManager.defaultManager.createFileAtPath(pathToSave, modelData.toNSData(), null)
         return modelData
     }
 
-    actual fun cacheAndGetPath(name: String, url: String): String {
+    actual fun cacheAndGetPath(name: String, url: String, checksum: Int): String {
         if (url.startsWith("assets://")) {
             val pathParts = url.replace("assets://", "").split(".")
             return bundle.pathForResource(pathParts[0], pathParts[1])!!
@@ -47,6 +53,9 @@ actual class ResourceHelper {
             return pathToSave
         }
         val modelData = readUrl(url)
+        if (checksum > 0) {
+            checkCrc32(modelData, checksum)
+        }
         NSFileManager.defaultManager.createFileAtPath(pathToSave, modelData.toNSData(), null)
         return pathToSave
     }
@@ -67,6 +76,14 @@ actual class ResourceHelper {
         url.startsWith("https://") -> runBlocking { client.get(url).readBytes() }
         else -> throw IllegalArgumentException("Illegal URL: $url")
     }
+
+    private fun checkCrc32(modelBytes: ByteArray, expected: Int) {
+        val computedChecksum = CRC32.compute(modelBytes)
+        if (computedChecksum != expected) {
+            throw IOException("Invalid data checksum, expected: $expected given: $computedChecksum")
+        }
+    }
+
 }
 
 actual object ResourceHelperFactory {

@@ -6,12 +6,12 @@ import org.tensorflow.lite.gpu.GpuDelegate
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-actual class InterpreterImpl actual constructor(modelPath: String) : Interpreter {
+actual class InterpreterImpl actual constructor(modelPath: String, modelChecksum: Int) : Interpreter {
     private val interpreter: org.tensorflow.lite.Interpreter
 
     init {
         val model = ResourceHelperFactory.getInstance()
-            .cacheAndRead("tflite.model", modelPath)
+            .cacheAndRead("tflite.model", modelPath, modelChecksum)
         val modelBuffer = ByteBuffer.allocateDirect(model.size)
         modelBuffer.order(ByteOrder.nativeOrder())
         modelBuffer.put(model)

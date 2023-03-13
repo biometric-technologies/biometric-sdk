@@ -3,7 +3,10 @@ package net.iriscan.sdk.core.io
 import android.annotation.SuppressLint
 import android.content.Context
 import com.soywiz.korio.net.http.HttpClient
+import com.soywiz.korio.util.checksum.CRC32
+import com.soywiz.korio.util.checksum.compute
 import kotlinx.coroutines.runBlocking
+import net.iriscan.sdk.io.exception.IOException
 import java.io.FileNotFoundException
 
 /**
@@ -13,31 +16,45 @@ actual class ResourceHelper(private val context: Context) {
     private val client = HttpClient()
     actual fun read(url: String): ByteArray = readUrl(url)
 
-    actual fun cacheAndRead(name: String, url: String): ByteArray {
+    actual fun cacheAndRead(name: String, url: String, checksum: Int): ByteArray {
         if (url.startsWith("assets://")) {
-            return readUrl(url)
+            val bytes = readUrl(url)
+            if (checksum > 0) {
+                checkCrc32(bytes, checksum)
+            }
         }
         return try {
             context.openFileInput(name).readBytes()
         } catch (e: FileNotFoundException) {
-            val modelBytes = readUrl(url)
-            context.openFileOutput(name, Context.MODE_PRIVATE).use {
-                it.write(modelBytes)
+            val bytes = readUrl(url)
+            if (checksum > 0) {
+                checkCrc32(bytes, checksum)
             }
-            modelBytes
+            context.openFileOutput(name, Context.MODE_PRIVATE).use {
+                it.write(bytes)
+            }
+            bytes
         }
     }
 
-    actual fun cacheAndGetPath(name: String, url: String): String {
+    actual fun cacheAndGetPath(name: String, url: String, checksum: Int): String {
         if (url.startsWith("assets://")) {
-            return url.replace("assets://", "")
+            val path = url.replace("assets://", "")
+            if (checksum > 0) {
+                val bytes = readUrl(url)
+                checkCrc32(bytes, checksum)
+            }
+            return path
         }
         if (context.fileList().contains(name)) {
             return name
         }
-        val modelBytes = runBlocking { client.readBytes(url) }
+        val bytes = runBlocking { client.readBytes(url) }
+        if (checksum > 0) {
+            checkCrc32(bytes, checksum)
+        }
         context.openFileOutput(name, Context.MODE_PRIVATE).use {
-            it.write(modelBytes)
+            it.write(bytes)
         }
         return name
     }
@@ -48,6 +65,13 @@ actual class ResourceHelper(private val context: Context) {
 
         url.startsWith("https://") -> runBlocking { client.readBytes(url) }
         else -> throw IllegalArgumentException("Illegal URL: $url")
+    }
+
+    private fun checkCrc32(bytes: ByteArray, expected: Int) {
+        val computedChecksum = CRC32.compute(bytes)
+        if (computedChecksum != expected) {
+            throw IOException("Invalid data checksum, expected: $expected given: $computedChecksum")
+        }
     }
 
 }

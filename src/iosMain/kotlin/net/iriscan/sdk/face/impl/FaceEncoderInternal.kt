@@ -16,7 +16,7 @@ import kotlin.math.sqrt
  * @author Slava Gornostal
  */
 internal actual class FaceEncoderInternal actual constructor(private val faceNetModelConfig: FaceNetModelConfiguration) {
-    private val interpreter = InterpreterImpl(faceNetModelConfig.tfliteModelPath)
+    private val interpreter = InterpreterImpl(faceNetModelConfig.tfliteModelPath, faceNetModelConfig.modelChecksum)
     actual fun encode(image: Image): DataBytes {
         val resized = resizeImg(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
         val pixels =

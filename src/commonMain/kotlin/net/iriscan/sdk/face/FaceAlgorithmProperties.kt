@@ -9,6 +9,7 @@ class FaceEncodeProperties(val faceNetModel: FaceNetModelConfiguration)
 
 class FaceNetModelConfiguration(
     val tfliteModelPath: String,
+    val modelChecksum: Int,
     val inputWidth: Int,
     val inputHeight: Int,
     val outputLength: Int

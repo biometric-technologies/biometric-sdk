@@ -7,14 +7,14 @@ import net.iriscan.sdk.core.io.ResourceHelperFactory
 import net.iriscan.sdk.utils.throwError
 import platform.Foundation.NSProcessInfo
 
-actual class InterpreterImpl actual constructor(modelPath: String) : Interpreter {
+actual class InterpreterImpl actual constructor(modelPath: String, modelChecksum: Int) : Interpreter {
 
     private val interpreter: TFLInterpreter = throwError { errorPtr ->
         val options = TFLInterpreterOptions()
         options.numberOfThreads = NSProcessInfo.processInfo.activeProcessorCount()
         options.useXNNPACK = true
         val modelUrl = ResourceHelperFactory.getInstance()
-            .cacheAndGetPath("tflite.model", modelPath)
+            .cacheAndGetPath("tflite.model", modelPath, modelChecksum)
         TFLInterpreter(modelUrl, options, errorPtr)
     }
 

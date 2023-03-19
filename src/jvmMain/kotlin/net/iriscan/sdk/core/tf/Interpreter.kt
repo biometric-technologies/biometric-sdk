@@ -11,7 +11,7 @@ import java.nio.ByteBuffer
 /**
  * @author Slava Gornostal
  */
-actual class InterpreterImpl actual constructor(modelPath: String) : Interpreter {
+actual class InterpreterImpl actual constructor(modelPath: String, modelChecksum: Int) : Interpreter {
 
     private val interpreter = org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
 

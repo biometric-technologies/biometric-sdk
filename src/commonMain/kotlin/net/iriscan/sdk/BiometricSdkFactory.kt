@@ -25,26 +25,22 @@ object BiometricSdkFactory : BiometricSdk {
         instanceRef ?: throw SdkNotInitializedException("Initialize SDK by calling configure(..)")
 }
 
-private class BiometricSdkOperationsImpl(val config: BiometricSdkConfig) : BiometricSdkOperations {
+private class BiometricSdkOperationsImpl(config: BiometricSdkConfig) : BiometricSdkOperations {
 
-    private val ioOperations = lazy { InputOutputOperationsImpl() }
-    private val irisOperations = lazy { IrisOperationsImpl(config.iris!!) }
-    private val faceOperations = lazy { FaceOperationsImpl(config.face!!) }
+    private val ioOperations = InputOutputOperationsImpl()
+    private val irisOperations = config.iris?.let { IrisOperationsImpl(it) }
+    private val faceOperations = config.face?.let { FaceOperationsImpl(it) }
 
-    override fun io(): InputOutputOperations = ioOperations.value
+    override fun io(): InputOutputOperations = ioOperations
 
     override fun qualityControl(): QualityControlOperations {
         TODO("Not implemented yet")
     }
 
-    override fun iris(): IrisOperations = when (config.iris) {
-        null -> throw IllegalStateException("Please initialize SDK with iris first")
-        else -> irisOperations.value
-    }
+    override fun iris(): IrisOperations =
+        irisOperations ?: throw IllegalStateException("Please initialize SDK with iris first")
 
-    override fun face(): FaceOperations = when (config.face) {
-        null -> throw IllegalStateException("Please initialize SDK with face first")
-        else -> faceOperations.value
-    }
+    override fun face(): FaceOperations =
+        faceOperations ?: throw IllegalStateException("Please initialize SDK with face first")
 
 }

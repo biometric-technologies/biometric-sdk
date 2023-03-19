@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
-import net.iriscan.sdk.core.exception.BiometricNotFoundException
 import net.iriscan.sdk.core.image.Image
 
 /**
@@ -18,9 +17,14 @@ internal actual class FaceExtractorInternal {
         val input = InputImage.fromBitmap(bitmap, 0)
         val result = Tasks.await(detector.process(input))
         if (result.isEmpty()) {
-            throw BiometricNotFoundException("Face was not found on the image")
+            return image
         }
         val face = result[0].boundingBox
-        return image[face.left..face.right, face.top..face.bottom]
+        if (face.left in 1 until image.width && face.right in 1 until image.width &&
+            face.top in 1 until image.height && face.bottom in 1 until image.height
+        ) {
+            return image[face.left..face.right, face.top..face.bottom]
+        }
+        return image
     }
 }

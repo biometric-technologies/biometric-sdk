@@ -3,7 +3,6 @@ package net.iriscan.sdk.face.impl
 import kotlinx.cinterop.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
-import net.iriscan.sdk.core.exception.BiometricNotFoundException
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.utils.imageToCGImage
 import net.iriscan.sdk.utils.throwError
@@ -23,7 +22,7 @@ internal actual class FaceExtractorInternal actual constructor() {
             val faceRect = CompletableDeferred<CValue<CGRect>>()
             val request = VNDetectFaceRectanglesRequest { data, error ->
                 if (error != null || data?.results.isNullOrEmpty()) {
-                    faceRect.completeExceptionally(BiometricNotFoundException("Face was not found on the image"))
+                    faceRect.complete(CGRectMake(0.0, 0.0, 0.0, 0.0))
                     return@VNDetectFaceRectanglesRequest
                 }
                 val face = data!!.results!!.first() as VNFaceObservation
@@ -53,6 +52,11 @@ internal actual class FaceExtractorInternal actual constructor() {
                 }
             }
         }
-        image[x..x + width, y..y + height]
+        when {
+            x in 0..image.width && y in 0..image.height &&
+                    width > 0 && height > 0 -> image[x..x + width, y..y + height]
+
+            else -> image
+        }
     }
 }

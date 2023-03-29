@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "net.iriscan"
-version = "0.2.2"
+version = "0.2.3"
 
 repositories {
     google()
@@ -27,6 +27,7 @@ kotlin {
     ios()
     iosArm64()
     iosX64()
+    iosSimulatorArm64()
 
     cocoapods {
         name = "BiometricSdk"
@@ -52,7 +53,7 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:multik-core:0.2.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-                implementation("com.soywiz.korlibs.korio:korio:2.2.0")
+                implementation("com.soywiz.korlibs.korio:korio:2.4.11")
                 implementation("io.ktor:ktor-client-core:2.2.1")
                 implementation("io.github.aakira:napier:2.6.1")
             }
@@ -74,6 +75,7 @@ kotlin {
         }
         val iosArm64Main by getting
         val iosX64Main by getting
+        val iosSimulatorArm64Main by getting
 
         val iosMain by getting {
             dependsOn(commonMain)
@@ -82,6 +84,7 @@ kotlin {
             }
             iosArm64Main.dependsOn(this)
             iosX64Main.dependsOn(this)
+            iosSimulatorArm64Main.dependsOn(this)
         }
     }
 }

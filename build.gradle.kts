@@ -62,6 +62,9 @@ kotlin {
             dependencies {
                 implementation("org.bytedeco:tensorflow-lite:2.10.0-1.5.8")
                 implementation("org.bytedeco:tensorflow-lite-platform:2.10.0-1.5.8")
+                implementation("org.bytedeco:opencv:4.6.0-1.5.8")
+                implementation("org.bytedeco:opencv-platform:4.6.0-1.5.8")
+                implementation("io.ktor:ktor-client-okhttp:2.2.1")
             }
         }
         val androidMain by getting {

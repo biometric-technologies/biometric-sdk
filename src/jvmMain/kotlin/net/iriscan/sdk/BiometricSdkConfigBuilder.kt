@@ -1,5 +1,8 @@
 package net.iriscan.sdk
 
+import io.github.aakira.napier.DebugAntilog
+import io.github.aakira.napier.Napier
+import net.iriscan.sdk.core.io.ResourceHelperFactory
 import net.iriscan.sdk.face.FaceEncodeProperties
 import net.iriscan.sdk.face.FaceExtractProperties
 import net.iriscan.sdk.face.FaceMatchProperties
@@ -8,12 +11,16 @@ import net.iriscan.sdk.iris.IrisExtractProperties
 import net.iriscan.sdk.iris.IrisMatchProperties
 
 actual class BiometricSdkConfigBuilder {
+    private var irisConfig: IrisConfig? = null
+    private var faceConfig: FaceConfig? = null
+
     actual fun withIris(
         extractor: IrisExtractProperties,
         encoder: IrisEncodeProperties,
         matcher: IrisMatchProperties
     ): BiometricSdkConfigBuilder {
-        TODO("Not yet implemented")
+        this.irisConfig = IrisConfig(extractor, encoder, matcher)
+        return this
     }
 
     actual fun withFace(
@@ -21,11 +28,18 @@ actual class BiometricSdkConfigBuilder {
         encoder: FaceEncodeProperties,
         matcher: FaceMatchProperties
     ): BiometricSdkConfigBuilder {
-        TODO("Not yet implemented")
+        this.faceConfig = FaceConfig(
+            extractor,
+            encoder,
+            matcher,
+        )
+        return this
     }
 
     actual fun build(): BiometricSdkConfig {
-        TODO("Not yet implemented")
+        ResourceHelperFactory.initialize()
+        Napier.base(DebugAntilog())
+        return BiometricSdkConfig(this.irisConfig, this.faceConfig)
     }
 
 }

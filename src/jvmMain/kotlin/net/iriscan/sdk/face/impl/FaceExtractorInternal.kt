@@ -27,7 +27,7 @@ internal actual class FaceExtractorInternal {
                 .toPath()
         if (!Files.exists(classifierFile)) {
             val classifierXml = javaClass.getResourceAsStream("/haarcascade_frontalface_alt.xml")!!
-            Files.createFile(classifierFile)
+            Files.createDirectories(classifierFile.parent)
             Files.copy(classifierXml, classifierFile)
         }
         classifier = CascadeClassifier(classifierFile.absolutePathString())

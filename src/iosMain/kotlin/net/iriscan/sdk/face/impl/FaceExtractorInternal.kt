@@ -15,7 +15,7 @@ import platform.Vision.VNImageRequestHandler
  * @author Slava Gornostal
  */
 internal actual class FaceExtractorInternal actual constructor() {
-    actual fun extract(image: Image): Image = autoreleasepool {
+    actual fun extract(image: Image): Image = memScoped {
         val cgImage = imageToCGImage(image)
         val (x, y, width, height) = throwError { errorPtr ->
             val handler = VNImageRequestHandler(cgImage.ptr, mapOf<Any?, Any?>())

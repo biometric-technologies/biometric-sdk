@@ -1,25 +1,20 @@
 package net.iriscan.sdk.utils
 
-import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.allocArrayOf
-import kotlinx.cinterop.memScoped
-import kotlinx.cinterop.usePinned
+import kotlinx.cinterop.*
 import platform.Foundation.NSData
-import platform.Foundation.create
+import platform.Foundation.dataWithBytesNoCopy
 import platform.posix.memcpy
 
 /**
  * @author Slava Gornostal
  */
-fun NSData.toByteArray(): ByteArray = ByteArray(this@toByteArray.length.toInt()).apply {
-    usePinned {
-        memcpy(it.addressOf(0), this@toByteArray.bytes, this@toByteArray.length)
-    }
+fun NSData.toByteArray(): ByteArray = memScoped {
+    val buffer = ByteArray(length.toInt())
+    val dataPtr = bytes!!.reinterpret<ByteVar>()
+    buffer.usePinned { pinned -> memcpy(pinned.addressOf(0), dataPtr, length) }
+    return buffer
 }
 
-fun ByteArray.toNSData(): NSData = memScoped {
-    NSData.create(
-        bytes = allocArrayOf(this@toNSData),
-        length = this@toNSData.size.toULong()
-    )
+fun ByteArray.toNSData(): NSData = usePinned { pinned ->
+    NSData.dataWithBytesNoCopy(pinned.addressOf(0), this.size.toULong(), false)
 }

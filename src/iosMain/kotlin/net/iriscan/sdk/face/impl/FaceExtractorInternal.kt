@@ -4,6 +4,7 @@ import kotlinx.cinterop.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import net.iriscan.sdk.core.image.Image
+import net.iriscan.sdk.core.image.NativeImage
 import net.iriscan.sdk.utils.imageToCGImage
 import net.iriscan.sdk.utils.throwError
 import platform.CoreGraphics.*
@@ -58,5 +59,9 @@ internal actual class FaceExtractorInternal actual constructor() {
 
             else -> image
         }
+    }
+
+    actual fun extract(image: NativeImage): NativeImage {
+        TODO("Not yet implemented")
     }
 }

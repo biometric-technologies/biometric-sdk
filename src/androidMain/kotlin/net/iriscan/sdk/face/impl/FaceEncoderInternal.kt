@@ -1,8 +1,9 @@
 package net.iriscan.sdk.face.impl
 
 import android.graphics.Bitmap
-import io.ktor.util.*
 import net.iriscan.sdk.core.image.Image
+import net.iriscan.sdk.core.image.NativeImage
+import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.core.tf.InterpreterImpl
 import net.iriscan.sdk.face.FaceNetModelConfiguration
 import org.tensorflow.lite.DataType
@@ -35,6 +36,15 @@ internal actual class FaceEncoderInternal actual constructor(
         bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(bitmap)).buffer
         bitmap.recycle()
+        return encodeInternal(imageBytes)
+    }
+
+    actual fun encode(image: NativeImage): DataBytes {
+        val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(image)).buffer
+        return encodeInternal(imageBytes)
+    }
+
+    private fun encodeInternal(imageBytes: ByteBuffer): ByteArray {
         val faceNetModelInputs = mapOf(0 to imageBytes)
         val faceNetModelOutputs = mutableMapOf<Int, Any>(0 to Array(1) { FloatArray(faceNetModelConfig.outputLength) })
         interpreter.invoke(faceNetModelInputs, faceNetModelOutputs)

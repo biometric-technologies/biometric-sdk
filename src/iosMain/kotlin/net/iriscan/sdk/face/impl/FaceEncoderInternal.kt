@@ -53,4 +53,8 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
             .toByteArray()
             .toNSData()
     }
+
+    actual fun encode(image: NativeImage): DataBytes {
+        TODO("Not yet implemented")
+    }
 }

@@ -1,6 +1,7 @@
 package net.iriscan.sdk.face
 
 import net.iriscan.sdk.core.image.Image
+import net.iriscan.sdk.core.image.NativeImage
 import net.iriscan.sdk.face.record.FaceImageRecord
 
 /**
@@ -18,4 +19,8 @@ interface FaceExtractor {
      * Detects and extracts face from raw image
      * */
     fun extract(sample: Image): Image
+    /**
+     * Detects and extracts face from raw image
+     * */
+    fun extract(sample: NativeImage): NativeImage
 }

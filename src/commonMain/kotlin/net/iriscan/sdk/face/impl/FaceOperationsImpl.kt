@@ -2,6 +2,7 @@ package net.iriscan.sdk.face.impl
 
 import net.iriscan.sdk.FaceConfig
 import net.iriscan.sdk.core.image.Image
+import net.iriscan.sdk.core.image.NativeImage
 import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.face.FaceEncoder
 import net.iriscan.sdk.face.FaceExtractor
@@ -23,6 +24,8 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
         }
 
         override fun extract(sample: Image): Image = extractor.extract(sample)
+
+        override fun extract(sample: NativeImage): NativeImage = extractor.extract(sample)
     }
 
     override fun encoder(): FaceEncoder = object : FaceEncoder {
@@ -31,12 +34,14 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
         }
 
         override fun encode(sample: Image): DataBytes = encoder.encode(sample)
+        override fun encode(sample: NativeImage): DataBytes = encoder.encode(sample)
 
         override fun extractAndEncode(sample: FaceImageRecord): FaceTemplateRecord {
             TODO("Not implemented yet")
         }
 
         override fun extractAndEncode(sample: Image): DataBytes = encoder.encode(extractor.extract(sample))
+        override fun extractAndEncode(sample: NativeImage): DataBytes = encoder.encode(extractor.extract(sample))
 
     }
 

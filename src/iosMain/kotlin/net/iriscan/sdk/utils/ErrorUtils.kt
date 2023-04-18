@@ -1,12 +1,12 @@
 package net.iriscan.sdk.utils
 
 import kotlinx.cinterop.*
-import platform.Foundation.*
+import platform.Foundation.NSError
 
 /**
  * @author Slava Gornostal
  */
-internal fun <T> throwError(block: (errorPointer: CPointer<ObjCObjectVar<NSError?>>) -> T): T {
+internal fun <T> throwError(block: (errorPointer: CPointer<ObjCObjectVar<NSError?>>) -> T): T =
     memScoped {
         val errorPointer: CPointer<ObjCObjectVar<NSError?>> = alloc<ObjCObjectVar<NSError?>>().ptr
         val result: T = block(errorPointer)
@@ -17,6 +17,5 @@ internal fun <T> throwError(block: (errorPointer: CPointer<ObjCObjectVar<NSError
             return result
         }
     }
-}
 
-class NSErrorException(val nsError: NSError): Exception(nsError.toString())
+class NSErrorException(nsError: NSError) : Exception(nsError.toString())

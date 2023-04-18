@@ -15,30 +15,30 @@ interface FaceEncoder {
     /**
      * Encodes provided extracted record to biometric template record
      * */
-    fun encode(sample: FaceImageRecord): FaceTemplateRecord
+    fun encode(record: FaceImageRecord): FaceTemplateRecord
 
     /**
      * Extracts and encodes provided record to biometric template record
      * */
-    fun extractAndEncode(sample: FaceImageRecord): FaceTemplateRecord
+    fun extractAndEncode(record: FaceImageRecord): FaceTemplateRecord
 
     /**
      * Encodes provided image to face template
      * */
-    fun encode(sample: Image): DataBytes
+    fun encode(sdkImage: Image): DataBytes
 
     /**
      * Encodes provided image to face template
      * */
-    fun encode(sample: NativeImage): DataBytes
+    fun encode(nativeImage: NativeImage): DataBytes
 
     /**
      * Extracts and encodes provided record to face template record
      * */
-    fun extractAndEncode(sample: Image): DataBytes
+    fun extractAndEncode(sdkImage: Image): DataBytes
 
     /**
      * Extracts and encodes provided record to face template record
      * */
-    fun extractAndEncode(sample: NativeImage): DataBytes
+    fun extractAndEncode(nativeImage: NativeImage): DataBytes
 }

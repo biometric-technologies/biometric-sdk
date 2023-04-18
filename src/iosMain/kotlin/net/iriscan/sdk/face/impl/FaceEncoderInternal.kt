@@ -1,5 +1,6 @@
 package net.iriscan.sdk.face.impl
 
+import kotlinx.cinterop.*
 import net.iriscan.sdk.core.image.*
 import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.core.tf.InterpreterImpl
@@ -7,10 +8,8 @@ import net.iriscan.sdk.core.utils.resizeImg
 import net.iriscan.sdk.face.FaceNetModelConfiguration
 import net.iriscan.sdk.utils.toByteArray
 import net.iriscan.sdk.utils.toNSData
+import platform.CoreGraphics.*
 import platform.Foundation.NSData
-import kotlin.math.max
-import kotlin.math.pow
-import kotlin.math.sqrt
 
 /**
  * @author Slava Gornostal
@@ -22,17 +21,54 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
         val pixels =
             resized.colors
                 .flatMap {
-                    val color = when (image.colorType) {
-                        ImageColorType.RGB -> (it.red().toFloat() + it.green().toFloat() + it.blue().toFloat()) / 3
-                        ImageColorType.GRAY -> it.toFloat()
+                    when (image.colorType) {
+                        ImageColorType.RGB -> listOf(it.red().toFloat(), it.green().toFloat(), it.blue().toFloat())
+                        ImageColorType.GRAY -> listOf(it.toFloat(), it.toFloat(), it.toFloat())
                         ImageColorType.BINARY -> throw IllegalArgumentException("Unsupported color type ${image.colorType.name}")
                     }
-                    listOf(color, color, color)
                 }
                 .toFloatArray()
-        val mean = pixels.average().toFloat()
-        var std = sqrt(pixels.map { pi -> (pi - mean).pow(2) }.sum() / pixels.size.toFloat())
-        std = max(std, 1f / sqrt(pixels.size.toFloat()))
+        return encodeInternal(pixels)
+    }
+
+    actual fun encode(image: NativeImage): DataBytes {
+        val newWidth = faceNetModelConfig.inputWidth
+        val newHeight = faceNetModelConfig.inputHeight
+        val pixelCount = newWidth * newHeight
+        val data = nativeHeap.allocArray<UByteVar>(pixelCount * 4)
+        val colorSpace = CGColorSpaceCreateDeviceRGB()
+        val bitmapInfo = CGImageAlphaInfo.kCGImageAlphaNoneSkipLast.value
+        val context = CGBitmapContextCreate(
+            data,
+            newWidth.toULong(),
+            newHeight.toULong(),
+            8u,
+            (newWidth * 4).toULong(),
+            colorSpace,
+            bitmapInfo
+        )
+        CGContextSetInterpolationQuality(context, kCGInterpolationHigh)
+        CGContextDrawImage(context, CGRectMake(0.0, 0.0, newWidth.toDouble(), newHeight.toDouble()), image.ptr)
+        val pixels = FloatArray(pixelCount * 3)
+        var i = 0
+        for (j in 0 until pixelCount) {
+            val index = j * 4
+            val r = data[index].toFloat()
+            val g = data[index + 1].toFloat()
+            val b = data[index + 2].toFloat()
+            pixels[i] = r
+            pixels[i + 1] = g
+            pixels[i + 2] = b
+            i += 3
+        }
+        CGContextRelease(context)
+        nativeHeap.free(data)
+        return encodeInternal(pixels)
+    }
+
+    private fun encodeInternal(pixels: FloatArray): DataBytes {
+        val mean = 127.5f
+        val std = 128.0f
         for (i in pixels.indices) {
             pixels[i] = (pixels[i] - mean) / std
         }
@@ -54,7 +90,4 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
             .toNSData()
     }
 
-    actual fun encode(image: NativeImage): DataBytes {
-        TODO("Not yet implemented")
-    }
 }

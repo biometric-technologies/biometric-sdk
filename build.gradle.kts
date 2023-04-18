@@ -1,6 +1,6 @@
 plugins {
-    kotlin("multiplatform") version "1.7.21"
-    kotlin("native.cocoapods") version "1.7.21"
+    kotlin("multiplatform") version "1.8.20"
+    kotlin("native.cocoapods") version "1.8.20"
     id("maven-publish")
     id("com.android.library")
     id("convention.publication")

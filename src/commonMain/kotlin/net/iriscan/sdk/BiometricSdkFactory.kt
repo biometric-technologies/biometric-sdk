@@ -22,7 +22,7 @@ object BiometricSdkFactory : BiometricSdk {
     }
 
     override fun getInstance(): BiometricSdkOperations =
-        instanceRef ?: throw SdkNotInitializedException("Initialize SDK by calling configure(..)")
+        instanceRef ?: throw IllegalStateException("Initialize SDK by calling configure(..)")
 }
 
 private class BiometricSdkOperationsImpl(config: BiometricSdkConfig) : BiometricSdkOperations {

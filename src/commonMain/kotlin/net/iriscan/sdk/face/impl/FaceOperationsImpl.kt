@@ -19,29 +19,29 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
     private val encoder = FaceEncoderInternal(config.encoder.faceNetModel)
 
     override fun extractor(): FaceExtractor = object : FaceExtractor {
-        override fun extract(sample: FaceImageRecord): FaceImageRecord {
+        override fun extract(record: FaceImageRecord): FaceImageRecord {
             TODO("Not implemented yet")
         }
 
-        override fun extract(sample: Image): Image = extractor.extract(sample)
+        override fun extract(sdkImage: Image): Image = extractor.extract(sdkImage)
 
-        override fun extract(sample: NativeImage): NativeImage = extractor.extract(sample)
+        override fun extract(nativeImage: NativeImage): NativeImage = extractor.extract(nativeImage)
     }
 
     override fun encoder(): FaceEncoder = object : FaceEncoder {
-        override fun encode(sample: FaceImageRecord): FaceTemplateRecord {
+        override fun encode(record: FaceImageRecord): FaceTemplateRecord {
             TODO("Not implemented yet")
         }
 
-        override fun encode(sample: Image): DataBytes = encoder.encode(sample)
-        override fun encode(sample: NativeImage): DataBytes = encoder.encode(sample)
+        override fun encode(sdkImage: Image): DataBytes = encoder.encode(sdkImage)
+        override fun encode(nativeImage: NativeImage): DataBytes = encoder.encode(nativeImage)
 
-        override fun extractAndEncode(sample: FaceImageRecord): FaceTemplateRecord {
+        override fun extractAndEncode(record: FaceImageRecord): FaceTemplateRecord {
             TODO("Not implemented yet")
         }
 
-        override fun extractAndEncode(sample: Image): DataBytes = encoder.encode(extractor.extract(sample))
-        override fun extractAndEncode(sample: NativeImage): DataBytes = encoder.encode(extractor.extract(sample))
+        override fun extractAndEncode(sdkImage: Image): DataBytes = encoder.encode(extractor.extract(sdkImage))
+        override fun extractAndEncode(nativeImage: NativeImage): DataBytes = encoder.encode(extractor.extract(nativeImage))
 
     }
 

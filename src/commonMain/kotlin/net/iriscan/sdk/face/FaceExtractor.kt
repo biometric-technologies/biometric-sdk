@@ -13,14 +13,14 @@ interface FaceExtractor {
     /**
      * Detects and extracts face from biometric image record
      * */
-    fun extract(sample: FaceImageRecord): FaceImageRecord
+    fun extract(record: FaceImageRecord): FaceImageRecord
 
     /**
      * Detects and extracts face from raw image
      * */
-    fun extract(sample: Image): Image
+    fun extract(sdkImage: Image): Image
     /**
      * Detects and extracts face from raw image
      * */
-    fun extract(sample: NativeImage): NativeImage
+    fun extract(nativeImage: NativeImage): NativeImage
 }

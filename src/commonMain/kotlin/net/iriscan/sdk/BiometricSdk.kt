@@ -1,5 +1,7 @@
 package net.iriscan.sdk
 
+import net.iriscan.sdk.io.exception.IOException
+
 /**
  * @author Slava Gornostal
  *
@@ -9,15 +11,15 @@ interface BiometricSdk {
     /**
      * Initialized SDK, should be called before using any operations
      * */
+    @Throws(SdkInitializeException::class, IOException::class)
     fun configure(config: BiometricSdkConfig)
 
     /**
      * Get SDK operations
      *
      * @see BiometricSdkOperations
-     * @throws SdkNotInitializedException
      * */
     fun getInstance(): BiometricSdkOperations
 }
 
-class SdkNotInitializedException(message: String) : Exception(message)
+class SdkInitializeException(message: String) : Exception(message)

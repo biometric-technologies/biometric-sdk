@@ -1,5 +1,6 @@
 package net.iriscan.sdk.face.impl
 
+import io.github.aakira.napier.Napier
 import kotlinx.cinterop.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
@@ -11,6 +12,8 @@ import platform.CoreGraphics.*
 import platform.Vision.VNDetectFaceRectanglesRequest
 import platform.Vision.VNFaceObservation
 import platform.Vision.VNImageRequestHandler
+import kotlin.math.min
+
 
 /**
  * @author Slava Gornostal
@@ -18,50 +21,63 @@ import platform.Vision.VNImageRequestHandler
 internal actual class FaceExtractorInternal actual constructor() {
     actual fun extract(image: Image): Image = memScoped {
         val cgImage = imageToCGImage(image)
-        val (x, y, width, height) = throwError { errorPtr ->
-            val handler = VNImageRequestHandler(cgImage.ptr, mapOf<Any?, Any?>())
-            val faceRect = CompletableDeferred<CValue<CGRect>>()
+        val imageWidth = CGImageGetWidth(cgImage.ptr).toInt()
+        val imageHeight = CGImageGetHeight(cgImage.ptr).toInt()
+        val face = extractInternal(cgImage.ptr) ?: return@memScoped image
+        face.useContents {
+            val x = origin.x.toInt()
+            val y = origin.y.toInt()
+            val width = size.width.toInt()
+            val height = size.height.toInt()
+            image[x until min((x + width), imageWidth), y until min((y + height), imageHeight)]
+        }
+    }
+
+    actual fun extract(image: NativeImage): NativeImage {
+        val face = extractInternal(image.ptr) ?: return image
+        val cropped = CGImageCreateWithImageInRect(image.ptr, face)!!
+        return cropped.pointed
+    }
+
+    private fun extractInternal(cgImage: CGImageRef): CValue<CGRect>? {
+        val imageHeight = CGImageGetHeight(cgImage)
+        val imageWidth = CGImageGetWidth(cgImage)
+        return throwError { errorPtr ->
+            val handler = VNImageRequestHandler(cgImage, mapOf<Any?, Any?>())
+            val faceRect = CompletableDeferred<CValue<CGRect>?>()
             val request = VNDetectFaceRectanglesRequest { data, error ->
+                if (error != null) {
+                    Napier.e("Could not extract face from image: ${error.localizedDescription}")
+                }
                 if (error != null || data?.results.isNullOrEmpty()) {
-                    faceRect.complete(CGRectMake(0.0, 0.0, 0.0, 0.0))
+                    faceRect.complete(null)
                     return@VNDetectFaceRectanglesRequest
                 }
                 val face = data!!.results!!.first() as VNFaceObservation
                 val transform = CGAffineTransformTranslate(
                     CGAffineTransformMakeScale(1.0, -1.0),
                     0.0,
-                    -image.height.toDouble()
+                    -imageHeight.toDouble()
                 )
                 val translate = CGAffineTransformScale(
                     CGAffineTransformIdentity.readValue(),
-                    image.width.toDouble(),
-                    image.height.toDouble()
+                    imageWidth.toDouble(),
+                    imageHeight.toDouble()
                 )
                 val faceBox =
                     CGRectApplyAffineTransform(CGRectApplyAffineTransform(face.boundingBox, translate), transform)
-                faceRect.complete(faceBox)
-            }
-            handler.performRequests(listOf(request), errorPtr)
-            runBlocking {
-                faceRect.await().useContents {
-                    arrayOf(
-                        origin.x.toInt(),
-                        origin.y.toInt(),
-                        size.width.toInt(),
-                        size.height.toInt()
-                    )
+                faceBox.useContents {
+                    when {
+                        (origin.x.toInt() in (0..imageWidth.toInt())) && (origin.y.toInt() in (0..imageHeight.toInt()))
+                                && (size.width > 0) && (size.height > 0) -> faceRect.complete(faceBox)
+
+                        else -> faceRect.complete(null)
+                    }
                 }
             }
-        }
-        when {
-            x in 0..image.width && y in 0..image.height &&
-                    width > 0 && height > 0 -> image[x..x + width, y..y + height]
-
-            else -> image
+            handler.performRequests(listOf(request), errorPtr)
+            runBlocking { faceRect.await() }
         }
     }
 
-    actual fun extract(image: NativeImage): NativeImage {
-        TODO("Not yet implemented")
-    }
 }

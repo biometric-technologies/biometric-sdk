@@ -10,7 +10,7 @@ import platform.posix.memcpy
  */
 fun NSData.toByteArray(): ByteArray = memScoped {
     val buffer = ByteArray(length.toInt())
-    val dataPtr = bytes!!.reinterpret<ByteVar>()
+    val dataPtr = bytes?.reinterpret<ByteVar>()
     buffer.usePinned { pinned -> memcpy(pinned.addressOf(0), dataPtr, length) }
     return buffer
 }

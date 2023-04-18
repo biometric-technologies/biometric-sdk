@@ -7,20 +7,16 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.runBlocking
 import net.iriscan.sdk.io.exception.IOException
+import net.iriscan.sdk.utils.NSErrorException
 import net.iriscan.sdk.utils.throwError
 import net.iriscan.sdk.utils.toByteArray
 import net.iriscan.sdk.utils.toNSData
 import platform.Foundation.*
-import platform.darwin.NSObject
-import platform.darwin.NSObjectMeta
 
 /**
  * @author Slava Gornostal
  */
 actual class ResourceHelper {
-    private class BundleMarker : NSObject() {
-        companion object : NSObjectMeta()
-    }
 
     private val client = HttpClient()
     private val bundle = NSBundle.mainBundle
@@ -31,7 +27,11 @@ actual class ResourceHelper {
         if (url.startsWith("assets://")) {
             return readUrl(url)
         }
-        val pathToSave = getFilePath(name)
+        val pathToSave = try {
+            getFilePath(name)
+        } catch (e: NSErrorException) {
+            throw IOException(e.message ?: "Could not read file $name")
+        }
         if (NSFileManager.defaultManager.fileExistsAtPath(pathToSave)) {
             return NSData.dataWithContentsOfFile(pathToSave)!!.toByteArray()
         }
@@ -48,7 +48,11 @@ actual class ResourceHelper {
             val pathParts = url.replace("assets://", "").split(".")
             return bundle.pathForResource(pathParts[0], pathParts[1])!!
         }
-        val pathToSave = getFilePath(name)
+        val pathToSave = try {
+            getFilePath(name)
+        } catch (e: NSErrorException) {
+            throw IOException(e.message ?: "Could not read file $name")
+        }
         if (NSFileManager.defaultManager.fileExistsAtPath(pathToSave)) {
             return pathToSave
         }
@@ -62,7 +66,7 @@ actual class ResourceHelper {
 
     private fun getFilePath(name: String) = throwError { errorPointer ->
         NSFileManager.defaultManager.URLForDirectory(NSCachesDirectory, NSUserDomainMask, null, true, errorPointer)!!
-            .URLByAppendingPathComponent(name)!!.path!!
+            .URLByAppendingPathComponent(name)?.path ?: throw IOException("Invalid file name $name")
     }
 
     private fun readUrl(url: String): ByteArray = when {
@@ -70,7 +74,7 @@ actual class ResourceHelper {
             val pathParts = url.replace("assets://", "").split(".")
             val path = bundle
                 .pathForResource(pathParts[pathParts.size - 2], pathParts[pathParts.size - 1])!!
-            NSData.dataWithContentsOfFile(path)!!.toByteArray()
+            NSData.dataWithContentsOfFile(path)?.toByteArray() ?: throw IOException("No file found at path $url")
         }
 
         url.startsWith("https://") -> runBlocking { client.get(url).readBytes() }

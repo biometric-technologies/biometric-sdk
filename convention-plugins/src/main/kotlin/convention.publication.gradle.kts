@@ -6,6 +6,7 @@ plugins {
 }
 
 // Stub secrets to let the project sync and build without the publication values set up
+ext["sign"] = System.getenv("SIGN")?.toBoolean() ?: true
 ext["signing.keyId"] = null
 ext["signing.password"] = null
 ext["signing.secretKeyRingFile"] = null
@@ -88,7 +89,8 @@ signing {
     sign(publishing.publications)
 }
 
-/* Disable sign tasks
 tasks.withType<Sign>().configureEach {
-    onlyIf { false }
-}*/
+    onlyIf {
+        ext["sign"] as Boolean
+    }
+}

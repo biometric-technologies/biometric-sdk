@@ -1,0 +1,37 @@
+name: Build and push distributions to git
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  SIGN: false
+
+jobs:
+  build-and-push:
+    runs-on: macos-latest
+    steps:
+      - name: Check Out
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Get project version
+        run: echo "VERSION=$(grep 'version =' build.gradle.kts | awk '{print $3}' | sed 's/\"//g')" >> $GITHUB_ENV
+
+      - name: Make gradlew executable again
+        run: chmod +x ./gradlew
+
+      - name: Build
+        run: ./gradlew clean publishToMavenLocal podPublishXCFramework
+
+      - name: Print libs
+        run: ls -ln ./build/libs
+
+      - name: Print ios
+        run: ls -ln ./build/cocoapods/publish/debug/BiometricSdk.xcframework

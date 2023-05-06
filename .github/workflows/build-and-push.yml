@@ -1,4 +1,4 @@
-name: Build and push distributions to git
+name: Build
 
 on:
   push:
@@ -20,9 +20,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-
-      - name: Get project version
-        run: echo "VERSION=$(grep 'version =' build.gradle.kts | awk '{print $3}' | sed 's/\"//g')" >> $GITHUB_ENV
 
       - name: Make gradlew executable again
         run: chmod +x ./gradlew

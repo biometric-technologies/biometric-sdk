@@ -72,7 +72,7 @@ jobs:
         with:
           repository: biometric-technologies/biometric-sdk-ios-release
           directory: biometric-sdk-ios-release
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GIT_IOS_RELEASE_TOKEN }}
           branch: master
 
       - name: Install Cocoapods

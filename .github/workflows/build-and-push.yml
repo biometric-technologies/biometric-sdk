@@ -32,6 +32,9 @@ jobs:
 
   build-and-release-ios:
     runs-on: macos-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Check Out
         uses: actions/checkout@v3

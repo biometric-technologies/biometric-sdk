@@ -70,7 +70,6 @@ jobs:
       - name: Push ios sources
         uses: ad-m/github-push-action@master
         with:
-          ssh: true
           repository: biometric-technologies/biometric-sdk-ios-release
           directory: biometric-sdk-ios-release
           github_token: ${{ secrets.GIT_IOS_RELEASE_TOKEN }}

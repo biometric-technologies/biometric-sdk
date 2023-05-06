@@ -49,9 +49,9 @@ jobs:
         run: ./gradlew clean podPublishXCFramework
 
       - name: Checkout ios sources
-        uses: actions/checkout@v2
-        working-directory: ./biometric-sdk-ios-release
+        uses: actions/checkout@v3
         with:
+          path: biometric-sdk-ios-release
           repository: biometric-technologies/biometric-sdk-ios-release
           ref: master
 
@@ -68,9 +68,9 @@ jobs:
           git commit -a -m "New SDK release"
 
       - name: Push ios sources
-        working-directory: ./biometric-sdk-ios-release
         uses: ad-m/github-push-action@0.6.0
         with:
+          directory: biometric-sdk-ios-release
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: master
 

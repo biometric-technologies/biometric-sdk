@@ -9,7 +9,7 @@ env:
   SIGN: false
 
 jobs:
-  build-and-push-jvm-android:
+  build-and-publish-jvm-android:
     runs-on: ubuntu-latest
     steps:
       - name: Check Out
@@ -30,7 +30,7 @@ jobs:
           ls -ln ./build/libs && echo 'Complete'
         #run: ./gradlew clean publishAllPublicationsToSonatypeRepository
 
-  build-and-push-ios:
+  build-and-release-ios:
     runs-on: macos-latest
     steps:
       - name: Check Out
@@ -61,20 +61,26 @@ jobs:
 
       - name: Commit ios sources
         working-directory: ./biometric-sdk-ios-release
-        # git tag v1.0.0
         run: |
-          git config --global user.email "github-actions[bot]@iriscan.net"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           git commit -a -m "New SDK release"
+        # git tag v1.0.0
 
       - name: Push ios sources
         uses: ad-m/github-push-action@master
         with:
+          repository: biometric-technologies/biometric-sdk-ios-release
           directory: biometric-sdk-ios-release
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: master
 
-      - name: Release ios
+      - name: Install Cocoapods
+        run: gem install cocoapods
+
+      - name: Release library
         working-directory: ./biometric-sdk-ios-release
-        run: ls -ln && echo 'Complete'
         #run: pod trunk push BiometricSdk.podspec
+        run: ls -ln && echo 'Complete'
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}

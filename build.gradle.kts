@@ -32,10 +32,11 @@ kotlin {
     cocoapods {
         name = "BiometricSdk"
         summary = "Biometric SDK"
-        homepage = "https://iriscan.net"
+        homepage = "https://github.com/biometric-technologies/biometric-sdk"
 
         license = "{ :type => 'GPL-3.0', :text => 'GNU General Public License v3.0' }"
-        source = "{ :git => 'https://github.com/biometric-technologies/biometric-sdk.git', :tag => '$version' }"
+        source =
+            "{ :git => 'https://github.com/biometric-technologies/biometric-sdk-ios-release.git', :tag => '${project.version}' }"
         authors = "Slava Gornostal"
 
         ios.deploymentTarget = "11.0"

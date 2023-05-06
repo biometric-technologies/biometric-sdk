@@ -1,4 +1,4 @@
-name: Build
+name: Build and Publish IOS
 
 on:
   push:
@@ -9,7 +9,28 @@ env:
   SIGN: false
 
 jobs:
-  build-and-push:
+  build-and-push-jvm-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Make gradlew executable again
+        run: chmod +x ./gradlew
+
+      - name: Publish to Sonatype repository
+        run: |
+          ./gradlew clean publishToMavenLocal
+          ls -ln ./build/libs && echo 'Complete'
+        #run: ./gradlew clean publishAllPublicationsToSonatypeRepository
+
+  build-and-push-ios:
     runs-on: macos-latest
     steps:
       - name: Check Out
@@ -24,11 +45,36 @@ jobs:
       - name: Make gradlew executable again
         run: chmod +x ./gradlew
 
-      - name: Build
-        run: ./gradlew clean publishToMavenLocal podPublishXCFramework
+      - name: Build XCFramework
+        run: ./gradlew clean podPublishXCFramework
 
-      - name: Print libs
-        run: ls -ln ./build/libs
+      - name: Checkout ios sources
+        uses: actions/checkout@v2
+        working-directory: ./biometric-sdk-ios-release
+        with:
+          repository: biometric-technologies/biometric-sdk-ios-release
+          ref: master
 
-      - name: Print ios
-        run: ls -ln ./build/cocoapods/publish/debug/BiometricSdk.xcframework
+      - name: Update ios sources
+        working-directory: ./biometric-sdk-ios-release
+        run: cp -a ./../build/cocoapods/publish/debug/. .
+
+      - name: Commit ios sources
+        working-directory: ./biometric-sdk-ios-release
+        # git tag v1.0.0
+        run: |
+          git config --global user.email "github-actions[bot]@iriscan.net"
+          git config --global user.name "github-actions[bot]"
+          git commit -a -m "New SDK release"
+
+      - name: Push ios sources
+        working-directory: ./biometric-sdk-ios-release
+        uses: ad-m/github-push-action@0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: master
+
+      - name: Release ios
+        working-directory: ./biometric-sdk-ios-release
+        run: ls -ln && echo 'Complete'
+        #run: pod trunk push BiometricSdk.podspec

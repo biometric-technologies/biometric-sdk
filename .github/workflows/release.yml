@@ -2,11 +2,6 @@ name: Release new version
 
 on:
   workflow_dispatch:
-    inputs:
-      release_notes:
-        description: 'Release notes'
-        required: true
-        type: string
 
 jobs:
   build-and-publish-jvm-android:
@@ -144,7 +139,7 @@ jobs:
         with:
           tag_name: ${{ env.VERSION }}
           release_name: ${{ env.VERSION }}
-          body: ${{ inputs.release_notes }}
+          body: Binaries, sources and docs
           draft: false
           prerelease: false
 

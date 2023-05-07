@@ -32,9 +32,6 @@ jobs:
 
   build-and-release-ios:
     runs-on: macos-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
       - name: Check Out
         uses: actions/checkout@v3
@@ -76,6 +73,7 @@ jobs:
           repository: biometric-technologies/biometric-sdk-ios-release
           directory: biometric-sdk-ios-release
           github_token: ${{ secrets.GIT_IOS_RELEASE_TOKEN }}
+          ssh: true
           branch: master
 
       - name: Install Cocoapods

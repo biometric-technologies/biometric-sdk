@@ -2,8 +2,9 @@ name: Build and Publish IOS
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - v**
+  workflow_dispatch:
 
 env:
   SIGN: false
@@ -59,31 +60,25 @@ jobs:
         working-directory: ./biometric-sdk-ios-release
         run: cp -a ./../build/cocoapods/publish/debug/. .
 
-      - name: Commit ios sources
+      - name: Get project version
+        run: echo "VERSION=$(grep 'version =' build.gradle.kts | awk '{print $3}' | sed 's/\"//g')" >> $GITHUB_ENV
+
+      - name: Commit and push ios sources
         working-directory: ./biometric-sdk-ios-release
         run: |
+          mkdir -p ~/.ssh 
+          touch ~/.ssh/deploy_key
+          echo "${{ secrets.GIT_DEPLOY_KEY }}" >> ~/.ssh/deploy_key
+          touch ~/.ssh/config
+          echo "Host github-release-repo\n HostName github.com\n IdentityFile ~/.ssh/deploy_key" >> ~/.ssh/config
+          chmod 600 ~/.ssh/config
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git commit -a -m "New SDK release"
-        # git tag v1.0.0
-
-      - name: Push ios sources
-        uses: cpina/github-action-push-to-another-repository@main
-        env:
-          SSH_DEPLOY_KEY: ${{ secrets.GIT_IOS_RELEASE_TOKEN }}
-        with:
-          source-directory: ./biometric-sdk-ios-release
-          destination-github-username: 'biometric-technologies'
-          destination-repository-name: 'biometric-sdk-ios-release'
-          user-email: github-actions[bot]@users.noreply.github.com
-          target-branch: master
-#        uses: ad-m/github-push-action@master
-#        with:
-#          repository: biometric-technologies/biometric-sdk-ios-release
-#          directory: ./biometric-sdk-ios-release
-#          github_token: ${{ secrets.GIT_IOS_RELEASE_TOKEN }}
-#          ssh: true
-#          branch: master
+          git add -A
+          git commit -a -m "Release $VERSION"
+          git push
+          git tag v$VERSION
+          git push --tags
 
       - name: Install Cocoapods
         run: gem install cocoapods

@@ -68,13 +68,22 @@ jobs:
         # git tag v1.0.0
 
       - name: Push ios sources
-        uses: ad-m/github-push-action@master
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          SSH_DEPLOY_KEY: ${{ secrets.GIT_IOS_RELEASE_TOKEN }}
         with:
-          repository: biometric-technologies/biometric-sdk-ios-release
-          directory: ./biometric-sdk-ios-release
-          github_token: ${{ secrets.GIT_IOS_RELEASE_TOKEN }}
-          ssh: true
-          branch: master
+          source-directory: ./biometric-sdk-ios-release
+          destination-github-username: 'biometric-technologies'
+          destination-repository-name: 'biometric-sdk-ios-release'
+          user-email: github-actions[bot]@users.noreply.github.com
+          target-branch: master
+#        uses: ad-m/github-push-action@master
+#        with:
+#          repository: biometric-technologies/biometric-sdk-ios-release
+#          directory: ./biometric-sdk-ios-release
+#          github_token: ${{ secrets.GIT_IOS_RELEASE_TOKEN }}
+#          ssh: true
+#          branch: master
 
       - name: Install Cocoapods
         run: gem install cocoapods

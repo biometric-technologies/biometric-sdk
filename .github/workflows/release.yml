@@ -33,7 +33,7 @@ jobs:
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
       - name: Upload artifacts
-      - uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3
         with:
           name: jvm-android-release
           path: |
@@ -105,7 +105,7 @@ jobs:
         run: zip -r biometric-sdk-xcframework-$VERSION-sources.zip ./build/cocoapods/publish/release/BiometricSdk.xcframework
 
       - name: Upload artifact
-      - uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3
         with:
           name: ios-release
           path: ./biometric-sdk-xcframework-$VERSION-sources.zip
@@ -126,6 +126,7 @@ jobs:
         with:
           name: jvm-android-release
           path: ./jvm-android-release
+
       - uses: actions/download-artifact@v3
         with:
           name: ios-release

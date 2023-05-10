@@ -1,8 +1,6 @@
 package net.iriscan.sdk.core.tf
 
 import net.iriscan.sdk.core.io.ResourceHelperFactory
-import org.tensorflow.lite.gpu.CompatibilityList
-import org.tensorflow.lite.gpu.GpuDelegate
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -16,11 +14,7 @@ actual class InterpreterImpl actual constructor(modelPath: String, modelChecksum
         modelBuffer.order(ByteOrder.nativeOrder())
         modelBuffer.put(model)
         val options = org.tensorflow.lite.Interpreter.Options().apply {
-            if (CompatibilityList().isDelegateSupportedOnThisDevice) {
-                this.addDelegate(GpuDelegate())
-            } else {
-                this.numThreads = Runtime.getRuntime().availableProcessors()
-            }
+            this.numThreads = Runtime.getRuntime().availableProcessors()
         }
         interpreter = org.tensorflow.lite.Interpreter(modelBuffer, options)
     }

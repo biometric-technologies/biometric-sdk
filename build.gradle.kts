@@ -71,8 +71,6 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation("org.tensorflow:tensorflow-lite:2.12.0")
-                implementation("org.tensorflow:tensorflow-lite-gpu:2.12.0")
-                implementation("org.tensorflow:tensorflow-lite-gpu-api:2.12.0")
                 implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
                 implementation("com.google.mlkit:face-detection:16.1.5")
                 implementation("io.ktor:ktor-client-okhttp:2.2.1")

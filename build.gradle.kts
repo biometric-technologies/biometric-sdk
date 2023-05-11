@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "net.iriscan"
-version = "0.3.2"
+version = "0.3.3"
 
 repositories {
     google()
@@ -123,5 +123,11 @@ android {
 kotlin.targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
     binaries.all {
         freeCompilerArgs += "-Xdisable-phases=EscapeAnalysis"
+    }
+}
+
+tasks.register("printVersion") {
+    doLast {
+        println("${project.version}")
     }
 }

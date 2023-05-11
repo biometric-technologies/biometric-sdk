@@ -4,8 +4,29 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-publish-jvm-android:
+  check-version:
     runs-on: ubuntu-latest
+    outputs:
+      version-changed: ${{ steps.check.outputs.version-changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check if version changed
+        id: check
+        run: | 
+          CURR_VERSION=$(grep 'version =' build.gradle.kts | awk '{print $3}' | sed 's/\"//g')          
+          TAG_EXISTS=$(git tag | grep -oP "^$CURR_VERSION$" || echo "")        
+          if [[ -n "$TAG_EXISTS" ]]; then
+            echo "::set-output name=version-changed::false"
+          else
+            echo "::set-output name=version-changed::true"
+          fi
+
+  jvm-android:
+    runs-on: ubuntu-latest
+    needs: check-version
+    if: needs.check-version.outputs.version-changed == 'true'
     env:
       SIGN_JAR_AND_AAR: true
     steps:
@@ -23,14 +44,14 @@ jobs:
 
       - name: Publish to Sonatype repository
         run: |
-          mkdir ~/.sign
-          echo "${{ secrets.SIGNING_SECRET_KEY_RING }}" | base64 --decode >> ~/.sign/ring.gpg
+          mkdir .sign
+          echo "${{ secrets.SIGNING_SECRET_KEY_RING }}" | base64 --decode >> .sign/ring.gpg
           ./gradlew clean publishAllPublicationsToSonatypeRepository closeAndReleaseSonatypeStagingRepository
-          rm -rf ~/.sign
+          rm -rf .sign
         env:
           SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          SIGNING_SECRET_KEY_RING_FILE: ~/.sign/ring.gpg
+          SIGNING_SECRET_KEY_RING_FILE: .sign/ring.gpg
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
@@ -42,8 +63,10 @@ jobs:
             ./build/libs/*.jar
             ./build/outputs/*.aar
 
-  build-and-release-cocoapods:
+  cocoapods:
     runs-on: macos-latest
+    needs: check-version
+    if: needs.check-version.outputs.version-changed == 'true'
     steps:
       - name: Check Out
         uses: actions/checkout@v3
@@ -108,11 +131,11 @@ jobs:
           name: cocoapods-release
           path: ./biometric-sdk-xcframework-$VERSION-sources.zip
 
-  release-git:
+  git-release:
     runs-on: ubuntu-latest
     needs:
-      - build-and-publish-jvm-android
-      - build-and-release-cocoapods
+      - jvm-android
+      - cocoapods
     steps:
       - name: Check Out
         uses: actions/checkout@v3

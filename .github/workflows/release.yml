@@ -59,6 +59,7 @@ jobs:
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
       - name: Clean jar/arr sign data
+        if: always()
         run: rm -rf .sign
 
       - name: Upload artifacts
@@ -76,6 +77,9 @@ jobs:
     steps:
       - name: Check Out
         uses: actions/checkout@v3
+
+      - name: Get project version
+        run: echo "VERSION=$(grep 'version =' build.gradle.kts | awk '{print $3}' | sed 's/\"//g')" >> $GITHUB_ENV
 
       - name: Set up JDK
         uses: actions/setup-java@v3
@@ -102,9 +106,6 @@ jobs:
       - name: Update cocoapods sources
         working-directory: ./biometric-sdk-cocoapods-release
         run: cp -a ./../build/cocoapods/publish/release/. .
-
-      - name: Get project version
-        run: echo "VERSION=$(grep 'version =' build.gradle.kts | awk '{print $3}' | sed 's/\"//g')" >> $GITHUB_ENV
 
       - name: Setup  SSH
         uses: webfactory/ssh-agent@v0.7.0

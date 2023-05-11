@@ -1,6 +1,7 @@
 plugins {
     kotlin("multiplatform") version "1.8.20"
     kotlin("native.cocoapods") version "1.8.20"
+    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
     id("maven-publish")
     id("com.android.library")
     id("convention.publication")
@@ -12,6 +13,15 @@ version = "0.3.0"
 repositories {
     google()
     mavenCentral()
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            username.set(System.getenv("OSSRH_USERNAME") ?: "")
+            password.set(System.getenv("OSSRH_PASSWORD") ?: "")
+        }
+    }
 }
 
 kotlin {
@@ -36,7 +46,7 @@ kotlin {
 
         license = "{ :type => 'GPL-3.0', :text => 'GNU General Public License v3.0' }"
         source =
-            "{ :git => 'https://github.com/biometric-technologies/biometric-sdk-ios-release.git', :tag => 'v${project.version}' }"
+            "{ :git => 'https://github.com/biometric-technologies/biometric-sdk-cocoapods-release.git', :tag => '${project.version}' }"
         authors = "Slava Gornostal"
 
         ios.deploymentTarget = "11.0"

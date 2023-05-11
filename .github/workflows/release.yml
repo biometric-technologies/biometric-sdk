@@ -6,6 +6,8 @@ on:
 jobs:
   build-and-publish-jvm-android:
     runs-on: ubuntu-latest
+    env:
+      SIGN_JAR_AND_AAR: true
     steps:
       - name: Check Out
         uses: actions/checkout@v3
@@ -23,8 +25,8 @@ jobs:
         run: |
           mkdir ~/.sign
           echo "${{ secrets.SIGNING_SECRET_KEY_RING }}" | base64 --decode >> ~/.sign/ring.gpg
-          ./gradlew clean publishAllPublicationsToSonatypeRepository
-          rm ~/.sign/ring.gpg
+          ./gradlew clean publishAllPublicationsToSonatypeRepository closeAndReleaseSonatypeStagingRepository
+          rm -rf ~/.sign
         env:
           SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
@@ -40,10 +42,8 @@ jobs:
             ./build/libs/*.jar
             ./build/outputs/*.aar
 
-  build-and-release-ios:
+  build-and-release-cocoapods:
     runs-on: macos-latest
-    env:
-      SIGN: false
     steps:
       - name: Check Out
         uses: actions/checkout@v3
@@ -57,46 +57,44 @@ jobs:
       - name: Make gradlew executable again
         run: chmod +x ./gradlew
 
+      - name: Install Cocoapods
+        run: gem install cocoapods
+
       - name: Build XCFramework
         run: ./gradlew clean podPublishReleaseXCFramework
 
-      - name: Checkout ios sources
+      - name: Checkout cocoapods sources
         uses: actions/checkout@v3
         with:
-          path: biometric-sdk-ios-release
-          repository: biometric-technologies/biometric-sdk-ios-release
-          ref: master
+          path: biometric-sdk-cocoapods-release
+          repository: biometric-technologies/biometric-sdk-cocoapods-release
+          ref: main
 
-      - name: Update ios sources
-        working-directory: ./biometric-sdk-ios-release
+      - name: Update cocoapods sources
+        working-directory: ./biometric-sdk-cocoapods-release
         run: cp -a ./../build/cocoapods/publish/release/. .
 
       - name: Get project version
         run: echo "VERSION=$(grep 'version =' build.gradle.kts | awk '{print $3}' | sed 's/\"//g')" >> $GITHUB_ENV
 
-      - name: Commit and push ios sources
-        working-directory: ./biometric-sdk-ios-release
-        run: |
-          mkdir -p ~/.ssh 
-          touch ~/.ssh/deploy_key
-          echo "${{ secrets.GIT_DEPLOY_KEY }}" >> ~/.ssh/deploy_key
-          touch ~/.ssh/config
-          echo "Host github-release-repo\n HostName github.com\n IdentityFile ~/.ssh/deploy_key" >> ~/.ssh/config
-          chmod 600 ~/.ssh/config
+      - name: Setup  SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.COCOAPODS_GIT_DEPLOY_KEY }}
+
+      - name: Commit and push cocoapods sources
+        working-directory: ./biometric-sdk-cocoapods-release
+        run: |         
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           git add -A
           git commit -a -m "Release $VERSION"
           git push
-          git tag v$VERSION
+          git tag $VERSION
           git push --tags
-          rm ~/.ssh/deploy_key
-
-      - name: Install Cocoapods
-        run: gem install cocoapods
 
       - name: Release library to Cocoapods
-        working-directory: ./biometric-sdk-ios-release
+        working-directory: ./biometric-sdk-cocoapods-release
         run: pod trunk push BiometricSdk.podspec
         env:
           COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
@@ -107,20 +105,23 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ios-release
+          name: cocoapods-release
           path: ./biometric-sdk-xcframework-$VERSION-sources.zip
 
   release-git:
     runs-on: ubuntu-latest
     needs:
       - build-and-publish-jvm-android
-      - build-and-release-ios
+      - build-and-release-cocoapods
     steps:
       - name: Check Out
         uses: actions/checkout@v3
 
       - name: Get project version
         run: echo "VERSION=$(grep 'version =' build.gradle.kts | awk '{print $3}' | sed 's/\"//g')" >> $GITHUB_ENV
+
+      - name: Get release name
+        run: echo "RELEASE_NAME=[$(date +'%Y-%m-%d')] v${{ env.VERSION }}" >> $GITHUB_ENV
 
       - uses: actions/download-artifact@v3
         with:
@@ -129,8 +130,8 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: ios-release
-          path: ./ios-release
+          name: cocoapods-release
+          path: ./cocoapods-release
 
       - name: Create Release
         id: create-release
@@ -139,7 +140,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.VERSION }}
-          release_name: ${{ env.VERSION }}
+          release_name: ${{ env.RELEASE_NAME }}
           body: Binaries, sources and docs
           draft: false
           prerelease: false
@@ -152,10 +153,10 @@ jobs:
           release_id: ${{ steps.create-release.outputs.id }}
           assets_path: ./jvm-android-release
 
-      - name: Upload ios artifacts
+      - name: Upload cocoapods artifacts
         uses: dwenegar/upload-release-assets@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           release_id: ${{ steps.create-release.outputs.id }}
-          assets_path: ./ios-release
+          assets_path: ./cocoapods-release

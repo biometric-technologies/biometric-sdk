@@ -34,11 +34,11 @@ jobs:
       - name: Check if version changed
         id: check
         run: |
-          TAG_EXISTS=$(git tag | grep -oP "^PROJECT_VERSION$" || echo "")        
+          TAG_EXISTS=$(git tag | grep -oP "^$PROJECT_VERSION$" || echo "")        
           if [[ -n "$TAG_EXISTS" ]]; then
-            echo "::set-output name=version-changed::false"
-          else
             echo "::set-output name=version-changed::true"
+          else
+            echo "::set-output name=version-changed::false"
           fi
 
   jvm-android:

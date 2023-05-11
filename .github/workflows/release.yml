@@ -1,7 +1,9 @@
 name: Release new version
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - master
 
 jobs:
   check-version:
@@ -14,7 +16,7 @@ jobs:
 
       - name: Check if version changed
         id: check
-        run: | 
+        run: |
           CURR_VERSION=$(grep 'version =' build.gradle.kts | awk '{print $3}' | sed 's/\"//g')          
           TAG_EXISTS=$(git tag | grep -oP "^$CURR_VERSION$" || echo "")        
           if [[ -n "$TAG_EXISTS" ]]; then
@@ -42,18 +44,22 @@ jobs:
       - name: Make gradlew executable again
         run: chmod +x ./gradlew
 
-      - name: Publish to Sonatype repository
+      - name: Prepare jar/arr sign data
         run: |
           mkdir .sign
           echo "${{ secrets.SIGNING_SECRET_KEY_RING }}" | base64 --decode >> .sign/ring.gpg
-          ./gradlew clean publishAllPublicationsToSonatypeRepository closeAndReleaseSonatypeStagingRepository
-          rm -rf .sign
+
+      - name: Publish to Sonatype repository
+        run: ./gradlew clean publishAllPublicationsToSonatypeRepository closeAndReleaseSonatypeStagingRepository
         env:
           SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
           SIGNING_SECRET_KEY_RING_FILE: .sign/ring.gpg
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+
+      - name: Clean jar/arr sign data
+        run: rm -rf .sign
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -107,7 +113,7 @@ jobs:
 
       - name: Commit and push cocoapods sources
         working-directory: ./biometric-sdk-cocoapods-release
-        run: |         
+        run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           git add -A

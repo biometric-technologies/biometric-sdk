@@ -115,6 +115,7 @@ jobs:
       - name: Checkout cocoapods sources
         uses: actions/checkout@v3
         with:
+          ssh-key: ${{ secrets.COCOAPODS_GIT_DEPLOY_KEY }}
           path: biometric-sdk-cocoapods-release
           repository: biometric-technologies/biometric-sdk-cocoapods-release
           ref: main
@@ -122,11 +123,6 @@ jobs:
       - name: Update cocoapods sources
         working-directory: ./biometric-sdk-cocoapods-release
         run: cp -a ./../build/cocoapods/publish/release/. .
-
-      - name: Setup  SSH
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.COCOAPODS_GIT_DEPLOY_KEY }}
 
       - name: Commit and push cocoapods sources
         working-directory: ./biometric-sdk-cocoapods-release

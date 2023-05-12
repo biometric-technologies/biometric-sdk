@@ -9,11 +9,13 @@ jobs:
   check-version:
     runs-on: ubuntu-latest
     outputs:
-      project-version: ${{ steps.get-version.outputs.project-version }}
+      project-version: ${{ steps.check.outputs.project-version }}
       version-changed: ${{ steps.check.outputs.version-changed }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history and tags
 
       - name: Set up JDK
         uses: actions/setup-java@v3
@@ -21,19 +23,25 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
       - name: Make gradlew executable again
         run: chmod +x ./gradlew
 
       - name: Get project version
-        id: get-version
+        id: check
         run: |
           PROJECT_VERSION=$(./gradlew -q printVersion)
           echo "PROJECT_VERSION=$PROJECT_VERSION" >> $GITHUB_ENV
           echo "project-version=$PROJECT_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Check if version changed
-        id: check
-        run: |
           TAG_EXISTS=$(git tag | grep -oP "^$PROJECT_VERSION$" || echo "")        
           if [[ -n "$TAG_EXISTS" ]]; then
             echo "version-changed=false" >> $GITHUB_OUTPUT
@@ -56,6 +64,16 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Make gradlew executable again
         run: chmod +x ./gradlew
@@ -102,6 +120,16 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Make gradlew executable again
         run: chmod +x ./gradlew
@@ -160,9 +188,6 @@ jobs:
       - name: Get project version
         run: echo "PROJECT_VERSION=${{ needs.check-version.outputs.project-version }}" >> $GITHUB_ENV
 
-      - name: Get release name
-        run: echo "RELEASE_NAME=[$(date +'%Y-%m-%d')] v${{ env.PROJECT_VERSION }}" >> $GITHUB_ENV
-
       - uses: actions/download-artifact@v3
         with:
           name: jvm-android-release
@@ -180,8 +205,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.PROJECT_VERSION }}
-          release_name: ${{ env.RELEASE_NAME }}
-          body: Binaries, sources and docs
+          release_name: v${{ env.PROJECT_VERSION }}
+          body: Automated release. Binaries, sources and docs.
           draft: false
           prerelease: false
 

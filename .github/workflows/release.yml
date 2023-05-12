@@ -29,16 +29,16 @@ jobs:
         run: |
           PROJECT_VERSION=$(./gradlew -q printVersion)
           echo "PROJECT_VERSION=$PROJECT_VERSION" >> $GITHUB_ENV
-          echo "::set-output name=project-version::$PROJECT_VERSION"
+          echo "project-version=$PROJECT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Check if version changed
         id: check
         run: |
           TAG_EXISTS=$(git tag | grep -oP "^$PROJECT_VERSION$" || echo "")        
           if [[ -n "$TAG_EXISTS" ]]; then
-            echo "::set-output name=version-changed::true"
+            echo "version-changed=false" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=version-changed::false"
+            echo "version-changed=true" >> $GITHUB_OUTPUT
           fi
 
   jvm-android:
@@ -84,7 +84,7 @@ jobs:
           name: jvm-android-release
           path: |
             ./build/libs/*.jar
-            ./build/outputs/*.aar
+            ./build/outputs/aar/biometric-sdk-release.aar
 
   cocoapods:
     runs-on: macos-latest
@@ -142,13 +142,13 @@ jobs:
           COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
 
       - name: Zip artifact sources
-        run: zip -r biometric-sdk-xcframework-$VERSION-sources.zip ./build/cocoapods/publish/release/BiometricSdk.xcframework
+        run: zip -r biometric-sdk-xcframework-$PROJECT_VERSION-sources.zip ./build/cocoapods/publish/release/BiometricSdk.xcframework
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: cocoapods-release
-          path: ./biometric-sdk-xcframework-$VERSION-sources.zip
+          path: ./biometric-sdk-xcframework-${{ env.PROJECT_VERSION }}-sources.zip
 
   git-release:
     runs-on: ubuntu-latest

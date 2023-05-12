@@ -1,6 +1,13 @@
 # About
 Biometric SDK is complete open-source solutions for different modals.
 
+![Workflow name](https://github.com/biometric-technologies/biometric-sdk/actions/workflows/release.yml/badge.svg)
+[![Maven Central](https://img.shields.io/maven-central/v/net.iriscan/biometric-sdk.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22net.iriscan%22%20AND%20a:%22biometric-sdk%22)
+[![Maven Central](https://img.shields.io/maven-central/v/net.iriscan/biometric-sdk-jvm.svg?label=Maven%20Central%20JVM)](https://search.maven.org/search?q=g:%22net.iriscan%22%20AND%20a:%22biometric-sdk-jvm%22)
+[![Maven Central](https://img.shields.io/maven-central/v/net.iriscan/biometric-sdk-android.svg?label=Maven%20Central%20Android)](https://search.maven.org/search?q=g:%22net.iriscan%22%20AND%20a:%22biometric-sdk-android%22)
+[![CocoaPods](https://img.shields.io/cocoapods/v/BiometricSdk)](https://cocoapods.org/pods/BiometricSdk)
+[![GitHub release](https://img.shields.io/github/v/release/biometric-technologies/biometric-sdk)](https://GitHub.com/biometric-technologies/biometric-sdk/releases/)
+
 # Structure
 
 NOTE: Some modules are still unavailable.

@@ -13,17 +13,17 @@ import net.iriscan.sdk.core.image.NativeImage
  */
 internal actual class FaceExtractorInternal {
     private val detector = FaceDetection.getClient()
-    actual fun extract(image: Image): Image {
+    actual fun extract(image: Image): Image? {
         val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.RGB_565)
         bitmap.setPixels(image.colors, 0, image.width, 0, 0, image.width, image.height)
         val input = InputImage.fromBitmap(bitmap, 0)
-        val face = extractInternal(input) ?: return image
+        val face = extractInternal(input) ?: return null
         return image[face.left..face.right, face.top..face.bottom]
     }
 
-    actual fun extract(image: NativeImage): NativeImage {
+    actual fun extract(image: NativeImage): NativeImage? {
         val input = InputImage.fromBitmap(image, 0)
-        val face = extractInternal(input) ?: return image
+        val face = extractInternal(input) ?: return null
         return Bitmap.createBitmap(image, face.left, face.top, face.width(), face.height())
     }
 

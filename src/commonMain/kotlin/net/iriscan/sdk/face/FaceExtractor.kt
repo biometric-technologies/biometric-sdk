@@ -18,9 +18,9 @@ interface FaceExtractor {
     /**
      * Detects and extracts face from raw image
      * */
-    fun extract(sdkImage: Image): Image
+    fun extract(sdkImage: Image): Image?
     /**
      * Detects and extracts face from raw image
      * */
-    fun extract(nativeImage: NativeImage): NativeImage
+    fun extract(nativeImage: NativeImage): NativeImage?
 }

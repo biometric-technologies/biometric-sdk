@@ -23,9 +23,9 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
             TODO("Not implemented yet")
         }
 
-        override fun extract(sdkImage: Image): Image = extractor.extract(sdkImage)
+        override fun extract(sdkImage: Image): Image? = extractor.extract(sdkImage)
 
-        override fun extract(nativeImage: NativeImage): NativeImage = extractor.extract(nativeImage)
+        override fun extract(nativeImage: NativeImage): NativeImage? = extractor.extract(nativeImage)
     }
 
     override fun encoder(): FaceEncoder = object : FaceEncoder {
@@ -40,8 +40,11 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
             TODO("Not implemented yet")
         }
 
-        override fun extractAndEncode(sdkImage: Image): DataBytes = encoder.encode(extractor.extract(sdkImage))
-        override fun extractAndEncode(nativeImage: NativeImage): DataBytes = encoder.encode(extractor.extract(nativeImage))
+        override fun extractAndEncode(sdkImage: Image): DataBytes? =
+            extractor.extract(sdkImage)?.let { encoder.encode(it) }
+
+        override fun extractAndEncode(nativeImage: NativeImage): DataBytes? =
+            extractor.extract(nativeImage)?.let { encoder.encode(it) }
 
     }
 

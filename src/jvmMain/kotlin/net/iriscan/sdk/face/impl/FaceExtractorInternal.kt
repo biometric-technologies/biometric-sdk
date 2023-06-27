@@ -32,7 +32,7 @@ internal actual class FaceExtractorInternal {
         classifier = CascadeClassifier(classifierFile.absolutePathString())
     }
 
-    actual fun extract(image: Image): Image {
+    actual fun extract(image: Image): Image? {
         val pixels = image.colors.flatMap {
             ByteBuffer.allocate(3).put(byteArrayOf(it.blue().toByte(), it.green().toByte(), it.red().toByte()))
                 .array()
@@ -40,14 +40,14 @@ internal actual class FaceExtractorInternal {
         }
             .toByteArray()
         val mat = Mat(image.height, image.width, opencv_core.CV_8UC3, BytePointer(*pixels))
-        val faceRect = extractInternal(mat) ?: return image
+        val faceRect = extractInternal(mat) ?: return null
         return image[faceRect.x()..faceRect.x() + faceRect.width(), faceRect.y()..faceRect.y() + faceRect.height()]
     }
 
-    actual fun extract(image: NativeImage): NativeImage {
+    actual fun extract(image: NativeImage): NativeImage? {
         val data = (image.raster.dataBuffer as DataBufferByte).data
         val mat = Mat(image.height, image.width, opencv_core.CV_8UC3, BytePointer(*data))
-        val faceRect = extractInternal(mat) ?: return image
+        val faceRect = extractInternal(mat) ?: return null
         return image.getSubimage(faceRect.x(), faceRect.y(), faceRect.width(), faceRect.height())
     }
 

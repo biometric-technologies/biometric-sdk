@@ -19,11 +19,11 @@ import kotlin.math.min
  * @author Slava Gornostal
  */
 internal actual class FaceExtractorInternal actual constructor() {
-    actual fun extract(image: Image): Image = memScoped {
+    actual fun extract(image: Image): Image? = memScoped {
         val cgImage = imageToCGImage(image)
         val imageWidth = CGImageGetWidth(cgImage.ptr).toInt()
         val imageHeight = CGImageGetHeight(cgImage.ptr).toInt()
-        val face = extractInternal(cgImage.ptr) ?: return@memScoped image
+        val face = extractInternal(cgImage.ptr) ?: return@memScoped null
         face.useContents {
             val x = origin.x.toInt()
             val y = origin.y.toInt()
@@ -33,8 +33,8 @@ internal actual class FaceExtractorInternal actual constructor() {
         }
     }
 
-    actual fun extract(image: NativeImage): NativeImage {
-        val face = extractInternal(image.ptr) ?: return image
+    actual fun extract(image: NativeImage): NativeImage? {
+        val face = extractInternal(image.ptr) ?: return null
         val cropped = CGImageCreateWithImageInRect(image.ptr, face)!!
         return cropped.pointed
     }

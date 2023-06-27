@@ -35,10 +35,10 @@ interface FaceEncoder {
     /**
      * Extracts and encodes provided record to face template record
      * */
-    fun extractAndEncode(sdkImage: Image): DataBytes
+    fun extractAndEncode(sdkImage: Image): DataBytes?
 
     /**
      * Extracts and encodes provided record to face template record
      * */
-    fun extractAndEncode(nativeImage: NativeImage): DataBytes
+    fun extractAndEncode(nativeImage: NativeImage): DataBytes?
 }

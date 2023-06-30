@@ -24,7 +24,13 @@ import kotlin.math.sqrt
 internal actual class FaceEncoderInternal actual constructor(
     private val faceNetModelConfig: FaceNetModelConfiguration
 ) {
-    private val interpreter = InterpreterImpl(faceNetModelConfig.tfliteModelPath, faceNetModelConfig.modelChecksum)
+    private val interpreter = InterpreterImpl(
+        "tflite.model",
+        faceNetModelConfig.path,
+        faceNetModelConfig.modelChecksum,
+        faceNetModelConfig.modelChecksumMethod,
+        faceNetModelConfig.overrideCacheOnWrongChecksum
+    )
     private val imageTensorProcessor = ImageProcessor.Builder()
         .add(ResizeOp(faceNetModelConfig.inputHeight, faceNetModelConfig.inputWidth, ResizeOp.ResizeMethod.BILINEAR))
         .add(StandardizeOp())

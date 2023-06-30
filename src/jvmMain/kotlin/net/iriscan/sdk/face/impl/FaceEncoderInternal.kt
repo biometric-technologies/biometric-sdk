@@ -18,7 +18,13 @@ internal actual class FaceEncoderInternal actual constructor(
     private val faceNetModelConfig: FaceNetModelConfiguration
 ) {
 
-    private val interpreter = InterpreterImpl(faceNetModelConfig.tfliteModelPath, faceNetModelConfig.modelChecksum)
+    private val interpreter = InterpreterImpl(
+        "tflite.model",
+        faceNetModelConfig.path,
+        faceNetModelConfig.modelChecksum,
+        faceNetModelConfig.modelChecksumMethod,
+        faceNetModelConfig.overrideCacheOnWrongChecksum
+    )
     actual fun encode(image: Image): ByteArray {
         val resized = resizeImg(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
         val rgb = Array(resized.width * resized.height) { floatArrayOf(0f, 0f, 0f) }

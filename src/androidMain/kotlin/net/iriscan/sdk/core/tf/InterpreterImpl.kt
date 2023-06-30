@@ -1,15 +1,19 @@
 package net.iriscan.sdk.core.tf
 
-import net.iriscan.sdk.core.io.ResourceHelperFactory
+import net.iriscan.sdk.core.io.HashMethod
+import net.iriscan.sdk.io.ResourceIOFactory
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-actual class InterpreterImpl actual constructor(modelPath: String, modelChecksum: Int) : Interpreter {
+actual class InterpreterImpl actual constructor(modelName: String,
+                                                modelPath: String,
+                                                modelChecksum: String?,
+                                                modelChecksumMethod: HashMethod?,
+                                                overrideCacheOnWrongChecksum: Boolean?) : Interpreter {
     private val interpreter: org.tensorflow.lite.Interpreter
 
     init {
-        val model = ResourceHelperFactory.getInstance()
-            .cacheAndRead("tflite.model", modelPath, modelChecksum)
+        // TODO
         val modelBuffer = ByteBuffer.allocateDirect(model.size)
         modelBuffer.order(ByteOrder.nativeOrder())
         modelBuffer.put(model)

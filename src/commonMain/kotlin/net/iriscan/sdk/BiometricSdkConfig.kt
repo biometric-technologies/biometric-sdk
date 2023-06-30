@@ -1,5 +1,6 @@
 package net.iriscan.sdk
 
+import net.iriscan.sdk.core.PlatformContext
 import net.iriscan.sdk.face.FaceEncodeProperties
 import net.iriscan.sdk.face.FaceExtractProperties
 import net.iriscan.sdk.face.FaceMatchProperties
@@ -12,7 +13,7 @@ import net.iriscan.sdk.iris.IrisMatchProperties
  *
  * SDK configuration object
  */
-class BiometricSdkConfig(val iris: IrisConfig?, val face: FaceConfig?)
+class BiometricSdkConfig(val context: PlatformContext?, val iris: IrisConfig?, val face: FaceConfig?)
 
 data class IrisConfig(
     val extractor: IrisExtractProperties,
@@ -26,18 +27,38 @@ data class FaceConfig(
     val matcher: FaceMatchProperties,
 )
 
-expect class BiometricSdkConfigBuilder {
+class BiometricSdkConfigBuilder {
+    private var context: PlatformContext? = null
+    private var irisConfig: IrisConfig? = null
+    private var faceConfig: FaceConfig? = null
+
+    fun withContext(context: PlatformContext): BiometricSdkConfigBuilder {
+        this.context = context
+        return this
+    }
+
     fun withIris(
         extractor: IrisExtractProperties,
         encoder: IrisEncodeProperties,
-        matcher: IrisMatchProperties,
-    ): BiometricSdkConfigBuilder
+        matcher: IrisMatchProperties
+    ): BiometricSdkConfigBuilder {
+        this.irisConfig = IrisConfig(extractor, encoder, matcher)
+        return this
+    }
 
     fun withFace(
         extractor: FaceExtractProperties,
         encoder: FaceEncodeProperties,
         matcher: FaceMatchProperties
-    ): BiometricSdkConfigBuilder
+    ): BiometricSdkConfigBuilder {
+        this.faceConfig = FaceConfig(
+            extractor,
+            encoder,
+            matcher,
+        )
+        return this
+    }
 
-    fun build(): BiometricSdkConfig
+    fun build(): BiometricSdkConfig =
+        BiometricSdkConfig(this.context, this.irisConfig, this.faceConfig)
 }

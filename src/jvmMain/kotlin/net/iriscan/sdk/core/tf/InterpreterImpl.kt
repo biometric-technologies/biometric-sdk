@@ -1,5 +1,6 @@
 package net.iriscan.sdk.core.tf
 
+import net.iriscan.sdk.core.io.HashMethod
 import net.iriscan.sdk.core.io.ResourceHelperFactory
 import org.bytedeco.javacpp.BytePointer
 import org.bytedeco.javacpp.Pointer
@@ -11,12 +12,16 @@ import java.nio.ByteBuffer
 /**
  * @author Slava Gornostal
  */
-actual class InterpreterImpl actual constructor(modelPath: String, modelChecksum: Int) : Interpreter {
+actual class InterpreterImpl actual constructor(modelName: String,
+                                                modelPath: String,
+                                                modelChecksum: String?,
+                                                modelChecksumMethod: HashMethod?,
+                                                overrideCacheOnWrongChecksum: Boolean?) : Interpreter {
 
     private val interpreter = org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
 
     init {
-        val modelBytes = ResourceHelperFactory.getInstance().read(modelPath)
+        val modelBytes = // TODO
         val builder = InterpreterBuilder(
             FlatBufferModel.BuildFromBuffer(BytePointer(ByteBuffer.wrap(modelBytes)), modelBytes.size.toLong()),
             BuiltinOpResolver()

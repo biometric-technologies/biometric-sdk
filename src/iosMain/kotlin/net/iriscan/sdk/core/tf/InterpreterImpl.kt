@@ -5,14 +5,18 @@ import cocoapods.TFLTensorFlowLite.TFLInterpreterOptions
 import io.github.aakira.napier.Napier
 import net.iriscan.sdk.SdkInitializeException
 import net.iriscan.sdk.core.io.DataBytes
+import net.iriscan.sdk.core.io.HashMethod
 import net.iriscan.sdk.core.io.ResourceHelperFactory
 import net.iriscan.sdk.utils.NSErrorException
 import net.iriscan.sdk.utils.throwError
 import platform.Foundation.NSProcessInfo
 
 actual class InterpreterImpl actual constructor(
-    private val modelPath: String,
-    private val modelChecksum: Int
+    modelName: String,
+    modelPath: String,
+    modelChecksum: String?,
+    modelChecksumMethod: HashMethod?,
+    overrideCacheOnWrongChecksum: Boolean?
 ) : Interpreter {
 
     private val interpreter: TFLInterpreter = try {
@@ -27,6 +31,7 @@ actual class InterpreterImpl actual constructor(
             val options = TFLInterpreterOptions()
             options.numberOfThreads = NSProcessInfo.processInfo.activeProcessorCount()
             options.useXNNPACK = true
+            // todo
             val modelUrl = ResourceHelperFactory.getInstance()
                 .cacheAndGetPath("tflite.model", modelPath, modelChecksum)
             TFLInterpreter(modelUrl, options, errorPtr)

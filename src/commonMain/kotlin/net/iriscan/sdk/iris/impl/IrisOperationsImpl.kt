@@ -21,7 +21,7 @@ internal class IrisOperationsImpl(private val config: IrisConfig) : IrisOperatio
             TODO("Not implemented yet")
         }
 
-        override fun extract(sample: Image): Image =
+        override fun extract(sample: Image): Image? =
             extractInternal(sample, config.extractor)
     }
 
@@ -30,8 +30,8 @@ internal class IrisOperationsImpl(private val config: IrisConfig) : IrisOperatio
             TODO("Not implemented yet")
         }
 
-        override fun extractAndEncode(sample: Image): DataBytes {
-            val texture = extractInternal(sample, config.extractor)
+        override fun extractAndEncode(sample: Image): DataBytes? {
+            val texture = extractInternal(sample, config.extractor) ?: return null
             return encodeInternal(texture, config.encoder).asDataBytes()
         }
 

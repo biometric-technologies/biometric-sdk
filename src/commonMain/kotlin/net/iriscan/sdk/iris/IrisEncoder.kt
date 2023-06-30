@@ -28,5 +28,5 @@ interface IrisEncoder {
     /**
      * Extracts and encodes provided image to iris template
      * */
-    fun extractAndEncode(sample: Image): DataBytes
+    fun extractAndEncode(sample: Image): DataBytes?
 }

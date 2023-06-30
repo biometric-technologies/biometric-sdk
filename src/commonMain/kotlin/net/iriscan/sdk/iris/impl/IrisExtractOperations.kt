@@ -1,6 +1,5 @@
 package net.iriscan.sdk.iris.impl
 
-import net.iriscan.sdk.core.exception.BiometricNotFoundException
 import net.iriscan.sdk.core.image.Circle
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.image.ImageColorType
@@ -14,7 +13,7 @@ import kotlin.math.*
  */
 private typealias CircleIntensity = Pair<Circle, Int>
 
-internal fun extractInternal(sample: Image, props: IrisExtractProperties): Image {
+internal fun extractInternal(sample: Image, props: IrisExtractProperties): Image? {
     val original = sample.clone()
     grayscaleImg(sample)
     fillImg(sample, threshold = 200, kernel = 12, fillKernel = 4)
@@ -49,7 +48,7 @@ internal fun extractInternal(sample: Image, props: IrisExtractProperties): Image
         }
     }
     val pupil = possibleIntensities.maxByOrNull { it.second }?.first
-        ?: throw BiometricNotFoundException("Could not find pupil")
+        ?: return null
     val approximateMinIrisRadius = props.minIrisRadius ?: (1.3 * pupil.r).toInt()
     val approximateMaxIrisRadius = props.maxIrisRadius ?: (10 * pupil.r)
     val maxIirisRadius = min(
@@ -66,7 +65,7 @@ internal fun extractInternal(sample: Image, props: IrisExtractProperties): Image
         props.irisRadiusCalculationSteps,
         circleModels,
         props.irisAnglesToSearch
-    )?.first ?: throw BiometricNotFoundException("Could not find pupil")
+    )?.first ?: return null
     return cutTextureFromSample(original, iris, pupil)
 }
 

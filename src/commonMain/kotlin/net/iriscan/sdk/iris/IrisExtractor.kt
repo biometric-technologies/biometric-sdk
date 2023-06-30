@@ -17,5 +17,5 @@ interface IrisExtractor {
     /**
      * Extracts biometric data from raw image
      * */
-    fun extract(sample: Image): Image
+    fun extract(sample: Image): Image?
 }

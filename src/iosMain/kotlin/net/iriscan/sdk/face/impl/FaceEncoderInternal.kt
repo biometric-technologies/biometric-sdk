@@ -3,9 +3,9 @@ package net.iriscan.sdk.face.impl
 import kotlinx.cinterop.*
 import net.iriscan.sdk.core.image.*
 import net.iriscan.sdk.core.io.DataBytes
-import net.iriscan.sdk.core.tf.InterpreterImpl
 import net.iriscan.sdk.core.utils.resizeImg
 import net.iriscan.sdk.face.FaceNetModelConfiguration
+import net.iriscan.sdk.tf.InterpreterImpl
 import net.iriscan.sdk.utils.toByteArray
 import net.iriscan.sdk.utils.toNSData
 import platform.CoreGraphics.*
@@ -15,7 +15,14 @@ import platform.Foundation.NSData
  * @author Slava Gornostal
  */
 internal actual class FaceEncoderInternal actual constructor(private val faceNetModelConfig: FaceNetModelConfiguration) {
-    private val interpreter = InterpreterImpl(faceNetModelConfig.tfliteModelPath, faceNetModelConfig.modelChecksum)
+    private val interpreter = InterpreterImpl(
+        "tflite.model",
+        faceNetModelConfig.path,
+        faceNetModelConfig.modelChecksum,
+        faceNetModelConfig.modelChecksumMethod,
+        faceNetModelConfig.overrideCacheOnWrongChecksum
+    )
+
     actual fun encode(image: Image): DataBytes {
         val resized = resizeImg(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
         val pixels =

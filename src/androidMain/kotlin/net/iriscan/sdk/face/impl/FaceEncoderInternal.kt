@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.image.NativeImage
 import net.iriscan.sdk.core.io.DataBytes
-import net.iriscan.sdk.core.tf.InterpreterImpl
+import net.iriscan.sdk.tf.InterpreterImpl
 import net.iriscan.sdk.face.FaceNetModelConfiguration
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.common.TensorOperator

@@ -3,7 +3,7 @@ package net.iriscan.sdk.face.impl
 import com.soywiz.korio.util.toByteArray
 import net.iriscan.sdk.core.image.*
 import net.iriscan.sdk.core.io.DataBytes
-import net.iriscan.sdk.core.tf.InterpreterImpl
+import net.iriscan.sdk.tf.InterpreterImpl
 import net.iriscan.sdk.core.utils.resizeImg
 import net.iriscan.sdk.face.FaceNetModelConfiguration
 import java.awt.Color

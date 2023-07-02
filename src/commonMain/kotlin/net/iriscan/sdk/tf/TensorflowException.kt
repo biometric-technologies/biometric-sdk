@@ -1,4 +1,4 @@
-package net.iriscan.sdk.core.tf
+package net.iriscan.sdk.tf
 
 /**
  * @author Slava Gornostal

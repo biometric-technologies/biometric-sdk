@@ -1,12 +1,12 @@
-package net.iriscan.sdk.core.tf
+package net.iriscan.sdk.tf
 
 import cocoapods.TFLTensorFlowLite.TFLInterpreter
 import cocoapods.TFLTensorFlowLite.TFLInterpreterOptions
 import io.github.aakira.napier.Napier
-import net.iriscan.sdk.SdkInitializeException
 import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.core.io.HashMethod
-import net.iriscan.sdk.core.io.ResourceHelperFactory
+import net.iriscan.sdk.exception.SdkInitializationException
+import net.iriscan.sdk.io.ResourceIOFactory
 import net.iriscan.sdk.utils.NSErrorException
 import net.iriscan.sdk.utils.throwError
 import platform.Foundation.NSProcessInfo
@@ -19,23 +19,36 @@ actual class InterpreterImpl actual constructor(
     overrideCacheOnWrongChecksum: Boolean?
 ) : Interpreter {
 
-    private val interpreter: TFLInterpreter = try {
-        getInterpreter()
-    } catch (e: NSErrorException) {
-        Napier.e("Interpreter initialize error", e)
-        throw SdkInitializeException("Could not initialize interpreter: ${e.message}")
-    }
+    private val interpreter: TFLInterpreter
 
-    private fun getInterpreter() =
-        throwError { errorPtr ->
-            val options = TFLInterpreterOptions()
-            options.numberOfThreads = NSProcessInfo.processInfo.activeProcessorCount()
-            options.useXNNPACK = true
-            // todo
-            val modelUrl = ResourceHelperFactory.getInstance()
-                .cacheAndGetPath("tflite.model", modelPath, modelChecksum)
-            TFLInterpreter(modelUrl, options, errorPtr)
+    init {
+        interpreter = try {
+            throwError { errorPtr ->
+                val options = TFLInterpreterOptions()
+                options.numberOfThreads = NSProcessInfo.processInfo.activeProcessorCount()
+                options.useXNNPACK = true
+                val modelUrl =
+                    if (modelChecksum != null && modelChecksumMethod != null && overrideCacheOnWrongChecksum != null) {
+                        ResourceIOFactory.getInstance()
+                            .readOrCacheLoadPath(
+                                modelName,
+                                modelPath,
+                                modelChecksum,
+                                modelChecksumMethod,
+                                overrideCacheOnWrongChecksum
+                            )
+                    } else {
+                        Napier.i("Loading $modelName path: $modelPath")
+                        ResourceIOFactory.getInstance()
+                            .readOrCacheLoadPath(modelName, modelPath)
+                    }
+                TFLInterpreter(modelUrl, options, errorPtr)
+            }
+        } catch (e: NSErrorException) {
+            Napier.e("Interpreter initialize error", e)
+            throw SdkInitializationException("Could not initialize interpreter: ${e.message}", e)
         }
+    }
 
     override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>) {
         try {

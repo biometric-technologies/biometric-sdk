@@ -1,7 +1,7 @@
-package net.iriscan.sdk.core.tf
+package net.iriscan.sdk.tf
 
 import net.iriscan.sdk.core.io.HashMethod
-import net.iriscan.sdk.core.io.ResourceHelperFactory
+import net.iriscan.sdk.io.ResourceIOFactory
 import org.bytedeco.javacpp.BytePointer
 import org.bytedeco.javacpp.Pointer
 import org.bytedeco.tensorflowlite.BuiltinOpResolver
@@ -12,18 +12,32 @@ import java.nio.ByteBuffer
 /**
  * @author Slava Gornostal
  */
-actual class InterpreterImpl actual constructor(modelName: String,
-                                                modelPath: String,
-                                                modelChecksum: String?,
-                                                modelChecksumMethod: HashMethod?,
-                                                overrideCacheOnWrongChecksum: Boolean?) : Interpreter {
+actual class InterpreterImpl actual constructor(
+    modelName: String,
+    modelPath: String,
+    modelChecksum: String?,
+    modelChecksumMethod: HashMethod?,
+    overrideCacheOnWrongChecksum: Boolean?
+) : Interpreter {
 
     private val interpreter = org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
 
     init {
-        val modelBytes = // TODO
+        val model = if (modelChecksum != null && modelChecksumMethod != null && overrideCacheOnWrongChecksum != null) {
+            ResourceIOFactory.getInstance()
+                .readOrCacheLoadData(
+                    modelName,
+                    modelPath,
+                    modelChecksum,
+                    modelChecksumMethod,
+                    overrideCacheOnWrongChecksum
+                )
+        } else {
+            ResourceIOFactory.getInstance()
+                .readOrCacheLoadData(modelName, modelPath)
+        }
         val builder = InterpreterBuilder(
-            FlatBufferModel.BuildFromBuffer(BytePointer(ByteBuffer.wrap(modelBytes)), modelBytes.size.toLong()),
+            FlatBufferModel.BuildFromBuffer(BytePointer(ByteBuffer.wrap(model)), model.size.toLong()),
             BuiltinOpResolver()
         )
         builder.apply(interpreter)

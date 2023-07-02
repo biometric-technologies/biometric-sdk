@@ -33,6 +33,38 @@ interface ResourceIO {
 
     @Throws(IOException::class)
     fun cacheLoad(name: String): ByteArray
+
+    fun cacheDelete(name: String): Boolean
+
+    @Throws(IOException::class)
+    fun readOrCacheLoadData(
+        name: String,
+        path: String
+    ): ByteArray
+
+    @Throws(IOException::class)
+    fun readOrCacheLoadData(
+        name: String,
+        path: String,
+        modelCheckSum: String,
+        modelChecksumMethod: HashMethod,
+        overrideOnWrongChecksum: Boolean
+    ): ByteArray
+
+    @Throws(IOException::class)
+    fun readOrCacheLoadPath(
+        name: String,
+        path: String,
+    ): String
+
+    @Throws(IOException::class)
+    fun readOrCacheLoadPath(
+        name: String,
+        path: String,
+        modelCheckSum: String,
+        modelChecksumMethod: HashMethod,
+        overrideOnWrongChecksum: Boolean
+    ): String
 }
 
 internal expect class ResourceIOImpl(context: PlatformContext) : ResourceIO

@@ -4,8 +4,8 @@ import android.graphics.Bitmap
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.image.NativeImage
 import net.iriscan.sdk.core.io.DataBytes
-import net.iriscan.sdk.tf.InterpreterImpl
 import net.iriscan.sdk.face.FaceNetModelConfiguration
+import net.iriscan.sdk.tf.InterpreterImpl
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.common.TensorOperator
 import org.tensorflow.lite.support.image.ImageProcessor
@@ -25,7 +25,7 @@ internal actual class FaceEncoderInternal actual constructor(
     private val faceNetModelConfig: FaceNetModelConfiguration
 ) {
     private val interpreter = InterpreterImpl(
-        "tflite.model",
+        "facenet.tflite",
         faceNetModelConfig.path,
         faceNetModelConfig.modelChecksum,
         faceNetModelConfig.modelChecksumMethod,

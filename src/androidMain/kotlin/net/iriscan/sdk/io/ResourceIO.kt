@@ -1,6 +1,5 @@
 package net.iriscan.sdk.io
 
-import android.content.Context
 import com.soywiz.korio.net.http.HttpClient
 import com.soywiz.korio.util.checksum.CRC32
 import com.soywiz.korio.util.checksum.compute
@@ -9,6 +8,7 @@ import kotlinx.coroutines.runBlocking
 import net.iriscan.sdk.core.PlatformContext
 import net.iriscan.sdk.core.io.HashMethod
 import net.iriscan.sdk.io.exception.IOException
+import java.io.File
 import java.io.FileNotFoundException
 
 /**
@@ -43,29 +43,26 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
 
     override fun cacheSave(name: String, data: ByteArray) {
         try {
-            context.openFileOutput(name, Context.MODE_PRIVATE).use {
-                it.write(data)
-            }
-        } catch (e: FileNotFoundException) {
+            File(context.cacheDir, name).writeBytes(data)
+        } catch (e: java.io.IOException) {
             throw IOException("File not found", e)
         }
     }
 
     override fun cacheExists(name: String): Boolean = try {
-        context.openFileInput(name)
-        true
-    } catch (e: FileNotFoundException) {
+        File(context.cacheDir, name).exists()
+    } catch (e: java.io.IOException) {
         false
     }
 
     override fun cacheLoad(name: String): ByteArray = try {
-        context.openFileInput(name).readBytes()
+        File(context.cacheDir, name).readBytes()
     } catch (e: FileNotFoundException) {
         throw IOException("File not found", e)
     }
 
     override fun cacheDelete(name: String) = try {
-        context.deleteFile(name)
+        File(context.cacheDir, name).delete()
     } catch (e: FileNotFoundException) {
         true
     }

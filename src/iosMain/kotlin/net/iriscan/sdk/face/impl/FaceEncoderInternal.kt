@@ -16,7 +16,7 @@ import platform.Foundation.NSData
  */
 internal actual class FaceEncoderInternal actual constructor(private val faceNetModelConfig: FaceNetModelConfiguration) {
     private val interpreter = InterpreterImpl(
-        "tflite.model",
+        "facenet.tflite",
         faceNetModelConfig.path,
         faceNetModelConfig.modelChecksum,
         faceNetModelConfig.modelChecksumMethod,

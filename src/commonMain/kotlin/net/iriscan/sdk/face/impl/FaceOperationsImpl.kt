@@ -61,11 +61,24 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
         }
 
         override fun matchesAny(sample1: DataBytes, samples: List<DataBytes>): Boolean {
-            val scoreAvg = samples
-                .map { matchFaceNetTemplatesInternal(sample1, it) }
-                .average()
-            return scoreAvg <= config.matcher.threshold
+            val minScore = samples
+                .minOf { matchFaceNetTemplatesInternal(sample1, it) }
+            return minScore <= config.matcher.threshold
         }
+
+        override fun matchScore(sample1: FaceTemplateRecord, sample2: FaceTemplateRecord): Double {
+            TODO("Not yet implemented")
+        }
+
+        override fun matchScore(sample1: DataBytes, sample2: DataBytes): Double =
+            matchFaceNetTemplatesInternal(sample1, sample2).toDouble()
+
+        override fun matchScoreMin(sample1: FaceTemplateRecord, samples: List<FaceTemplateRecord>): Double {
+            TODO("Not yet implemented")
+        }
+
+        override fun matchScoreMin(sample1: DataBytes, samples: List<DataBytes>): Double =
+            samples.minOf { matchFaceNetTemplatesInternal(sample1, it).toDouble() }
 
     }
 }

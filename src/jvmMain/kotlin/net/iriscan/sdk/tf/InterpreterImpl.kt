@@ -20,7 +20,7 @@ actual class InterpreterImpl actual constructor(
     overrideCacheOnWrongChecksum: Boolean?
 ) : Interpreter {
 
-    private val interpreter = org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
+    private val modelBuilder: InterpreterBuilder
 
     init {
         val model = if (modelChecksum != null && modelChecksumMethod != null && overrideCacheOnWrongChecksum != null) {
@@ -36,29 +36,26 @@ actual class InterpreterImpl actual constructor(
             ResourceIOFactory.getInstance()
                 .readOrCacheLoadData(modelName, modelPath)
         }
-        val builder = InterpreterBuilder(
+        modelBuilder = InterpreterBuilder(
             FlatBufferModel.BuildFromBuffer(BytePointer(ByteBuffer.wrap(model)), model.size.toLong()),
             BuiltinOpResolver()
         )
-        builder.apply(interpreter)
-        interpreter.AllocateTensors()
     }
 
     override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>) {
+        val interpreter = org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
+        modelBuilder.apply(interpreter)
+        interpreter.AllocateTensors()
         inputs.keys.forEach {
-            val data = inputs[it]!! as ByteArray
-            interpreter.input_tensor(it.toLong())
-                .data()
-                .raw()
+            val data = inputs[it]!! as FloatArray
+            interpreter.typed_input_tensor_float(it)
                 .put(data, 0, data.size)
         }
         interpreter.Invoke()
             .tfIfErrorThrow("Could not invoke model")
         outputs.keys.forEach {
-            val out = outputs[it]!! as ByteArray
-            interpreter.output_tensor(it.toLong())
-                .data()
-                .raw()
+            val out = outputs[it]!! as FloatArray
+            interpreter.typed_output_tensor_float(it)
                 .get(out)
         }
         interpreter.close()

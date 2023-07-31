@@ -20,31 +20,37 @@ actual class InterpreterImpl actual constructor(
     overrideCacheOnWrongChecksum: Boolean?
 ) : Interpreter {
 
-    private val modelBuilder: InterpreterBuilder
+    private val model: BytePointer
+    private val modelLen: Long
 
     init {
-        val model = if (modelChecksum != null && modelChecksumMethod != null && overrideCacheOnWrongChecksum != null) {
-            ResourceIOFactory.getInstance()
-                .readOrCacheLoadData(
-                    modelName,
-                    modelPath,
-                    modelChecksum,
-                    modelChecksumMethod,
-                    overrideCacheOnWrongChecksum
-                )
-        } else {
-            ResourceIOFactory.getInstance()
-                .readOrCacheLoadData(modelName, modelPath)
-        }
-        modelBuilder = InterpreterBuilder(
-            FlatBufferModel.BuildFromBuffer(BytePointer(ByteBuffer.wrap(model)), model.size.toLong()),
-            BuiltinOpResolver()
-        )
+        val modelBytes =
+            if (modelChecksum != null && modelChecksumMethod != null && overrideCacheOnWrongChecksum != null) {
+                ResourceIOFactory.getInstance()
+                    .readOrCacheLoadData(
+                        modelName,
+                        modelPath,
+                        modelChecksum,
+                        modelChecksumMethod,
+                        overrideCacheOnWrongChecksum
+                    )
+            } else {
+                ResourceIOFactory.getInstance()
+                    .readOrCacheLoadData(modelName, modelPath)
+            }
+        model = BytePointer(ByteBuffer.wrap(modelBytes))
+        modelLen = modelBytes.size.toLong()
     }
 
     override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>) {
         val interpreter = org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
-        modelBuilder.apply(interpreter)
+        // TODO: improve reuse builder on multiple threads
+        val modelBuilder = InterpreterBuilder(
+            FlatBufferModel.BuildFromBuffer(model, modelLen),
+            BuiltinOpResolver()
+        )
+        modelBuilder.apply(interpreter, Runtime.getRuntime().availableProcessors())
+        modelBuilder.close()
         interpreter.AllocateTensors()
         inputs.keys.forEach {
             val data = inputs[it]!! as FloatArray

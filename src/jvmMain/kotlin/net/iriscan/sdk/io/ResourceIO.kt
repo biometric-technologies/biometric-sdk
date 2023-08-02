@@ -4,6 +4,7 @@ import com.soywiz.korio.net.http.HttpClient
 import com.soywiz.korio.util.checksum.CRC32
 import com.soywiz.korio.util.checksum.compute
 import com.soywiz.krypto.SHA256
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.runBlocking
 import net.iriscan.sdk.core.PlatformContext
 import net.iriscan.sdk.core.io.HashMethod
@@ -29,7 +30,14 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
             throw IOException("Could not read file at path: $path", e)
         }
 
-        path.startsWith("https:") -> runBlocking { client.readBytes(path) }
+        path.startsWith("https:") -> runBlocking {
+            try {
+                client.readBytes(path)
+            } catch (ex: Exception) {
+                throw IOException(ex.message ?: "Unexpected http error", ex.cause)
+            }
+        }
+
         else -> throw IOException("Illegal path: $path")
     }
 
@@ -90,6 +98,7 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         when (cacheExists(name)) {
             true -> CachedData(name, cacheLoad(name))
             else -> {
+                Napier.i("Cache $name does not exists, loading from path: $path")
                 val data = read(path)
                 cacheSave(name, data)
                 CachedData(name, data)
@@ -108,7 +117,10 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         val checkSum = calculateHash(data, modelChecksumMethod)
         return if (!modelExists || (overrideOnWrongChecksum && checkSum != modelCheckSum)) {
             if (modelExists) {
+                Napier.i("Cache $name exists with different checksum $checkSum, loading new from path: $path")
                 cacheDelete(name)
+            } else {
+                Napier.i("Cache $name does not exists, loading from path: $path")
             }
             val newData = read(path)
             val newDataChecksum = calculateHash(newData, modelChecksumMethod)

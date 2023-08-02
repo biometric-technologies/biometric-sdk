@@ -22,6 +22,7 @@ interface BiometricSdk {
      * Get SDK operations
      *
      * @see BiometricSdkOperations
+     * @return sdk operations instance or null if sdk is not yet initialized
      * */
-    fun getInstance(): BiometricSdkOperations
+    fun getInstance(): BiometricSdkOperations?
 }

@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "net.iriscan"
-version = "0.4.2"
+version = "0.4.3"
 
 repositories {
     google()
@@ -67,7 +67,6 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
                 implementation("com.soywiz.korlibs.korio:korio:2.4.11")
-                implementation("io.ktor:ktor-client-core:2.2.1")
                 implementation("io.github.aakira:napier:2.6.1")
             }
         }
@@ -77,7 +76,6 @@ kotlin {
                 implementation("org.bytedeco:tensorflow-lite-platform:2.10.0-1.5.8")
                 implementation("org.bytedeco:opencv:4.6.0-1.5.8")
                 implementation("org.bytedeco:opencv-platform:4.6.0-1.5.8")
-                implementation("io.ktor:ktor-client-okhttp:2.2.1")
             }
         }
         val androidMain by getting {
@@ -85,7 +83,6 @@ kotlin {
                 implementation("org.tensorflow:tensorflow-lite:2.12.0")
                 implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
                 implementation("com.google.mlkit:face-detection:16.1.5")
-                implementation("io.ktor:ktor-client-okhttp:2.2.1")
             }
         }
         val iosArm64Main by getting

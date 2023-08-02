@@ -2,7 +2,8 @@ package net.iriscan.sdk
 
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
-import net.iriscan.sdk.exception.SdkNotInitializedException
+import kotlinx.atomicfu.AtomicRef
+import kotlinx.atomicfu.atomic
 import net.iriscan.sdk.io.ResourceIOFactory
 
 /**
@@ -10,19 +11,24 @@ import net.iriscan.sdk.io.ResourceIOFactory
  */
 object BiometricSdkFactory : BiometricSdk {
 
-    private var instanceRef: BiometricSdkOperations? = null
+    init {
+        Napier.base(DebugAntilog())
+    }
+
+    private val instanceRef: AtomicRef<BiometricSdkOperations?> = atomic(null)
     override fun configBuilder(): BiometricSdkConfigBuilder = BiometricSdkConfigBuilder()
 
     override fun initialize(config: BiometricSdkConfig) {
-        if (instanceRef != null) {
+        if (instanceRef.value != null) {
             return
         }
-        Napier.base(DebugAntilog())
         ResourceIOFactory.initialize(config.context)
-        this.instanceRef = BiometricSdkOperationsImpl(config)
+        this.instanceRef.lazySet(BiometricSdkOperationsImpl(config))
     }
 
-    override fun getInstance(): BiometricSdkOperations =
-        instanceRef ?: throw SdkNotInitializedException("Initialize SDK by calling initialize(...)")
+    override fun getInstance(): BiometricSdkOperations? {
+        Napier.e("Biometric SDK is not ready. Initialize SDK by calling initialize(...)")
+        return instanceRef.value
+    }
 
 }

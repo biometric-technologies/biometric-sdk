@@ -1,9 +1,8 @@
 package net.iriscan.sdk
 
+import com.soywiz.korio.concurrent.atomic.korAtomic
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
-import kotlinx.atomicfu.AtomicRef
-import kotlinx.atomicfu.atomic
 import net.iriscan.sdk.io.ResourceIOFactory
 
 /**
@@ -15,7 +14,7 @@ object BiometricSdkFactory : BiometricSdk {
         Napier.base(DebugAntilog())
     }
 
-    private val instanceRef: AtomicRef<BiometricSdkOperations?> = atomic(null)
+    private val instanceRef = korAtomic<BiometricSdkOperations?>(null)
     override fun configBuilder(): BiometricSdkConfigBuilder = BiometricSdkConfigBuilder()
 
     override fun initialize(config: BiometricSdkConfig) {
@@ -23,7 +22,7 @@ object BiometricSdkFactory : BiometricSdk {
             return
         }
         ResourceIOFactory.initialize(config.context)
-        this.instanceRef.lazySet(BiometricSdkOperationsImpl(config))
+        this.instanceRef.compareAndSet(null, BiometricSdkOperationsImpl(config))
     }
 
     override fun getInstance(): BiometricSdkOperations? {

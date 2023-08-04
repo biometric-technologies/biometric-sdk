@@ -1,13 +1,15 @@
 package net.iriscan.sdk.io
 
-import com.soywiz.korio.net.http.HttpClient
 import com.soywiz.korio.util.checksum.CRC32
 import com.soywiz.korio.util.checksum.compute
 import com.soywiz.krypto.SHA256
 import io.github.aakira.napier.Napier
+import io.ktor.client.*
+import io.ktor.client.engine.darwin.*
 import kotlinx.coroutines.runBlocking
 import net.iriscan.sdk.core.PlatformContext
 import net.iriscan.sdk.core.io.HashMethod
+import net.iriscan.sdk.core.utils.getBytes
 import net.iriscan.sdk.io.exception.IOException
 import net.iriscan.sdk.utils.NSErrorException
 import net.iriscan.sdk.utils.throwError
@@ -20,7 +22,13 @@ import platform.Foundation.*
  */
 internal actual class ResourceIOImpl actual constructor(private val context: PlatformContext) : ResourceIO {
 
-    private val client = HttpClient()
+    private val client = HttpClient(Darwin) {
+        engine {
+            configureRequest {
+                setAllowsCellularAccess(true)
+            }
+        }
+    }
     private val bundle = NSBundle.mainBundle
 
     override fun read(path: String): ByteArray = when {
@@ -40,10 +48,8 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
                 ?: throw IOException("No file found at path $path")
 
         path.startsWith("https:") -> runBlocking {
-            try {
-                client.readBytes(path)
-            } catch (ex: Exception) {
-                throw IOException(ex.message ?: "Unexpected http error", ex.cause)
+            client.getBytes(path) { progress ->
+                Napier.i("Reading data from url: $path - $progress % complete")
             }
         }
 
@@ -108,6 +114,7 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
                 Napier.i("Cache $name does not exists, loading from path: $path")
                 val data = read(path)
                 cacheSave(name, data)
+                Napier.i("Cache $name saved")
                 CachedData(url, data)
             }
         }
@@ -121,26 +128,43 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         overrideOnWrongChecksum: Boolean
     ): CachedData {
         val modelExists = cacheExists(name)
-        val data = readOrCacheLoadData(name, path)
-        val checkSum = calculateHash(data, modelChecksumMethod)
-        val url = getFilePath(name)
-        return if (!modelExists || (overrideOnWrongChecksum && checkSum != modelCheckSum)) {
-            if (modelExists) {
-                Napier.i("Cache $name exists with different checksum $checkSum, loading new from path: $path")
-                cacheDelete(name)
+        val data = if (modelExists) {
+            val data = cacheLoad(name)
+            if (overrideOnWrongChecksum) {
+                val checkSum = calculateHash(data, modelChecksumMethod)
+                if (checkSum != modelCheckSum) {
+                    Napier.i("Cache $name exists with different checksum $checkSum, loading new from path: $path")
+                    val newData = downloadAndVerifyChecksum(path, modelCheckSum, modelChecksumMethod)
+                    cacheSave(name, newData)
+                    Napier.i("Cache $name saved")
+                    newData
+                } else {
+                    data
+                }
             } else {
-                Napier.i("Cache $name does not exists, loading from path: $path")
+                data
             }
-            val newData = read(path)
-            val newDataChecksum = calculateHash(newData, modelChecksumMethod)
-            if (newDataChecksum != modelCheckSum) {
-                throw IOException("Invalid $path checksum, expected: $newDataChecksum, provided: $modelCheckSum")
-            }
-            cacheSave(name, newData)
-            CachedData(url, newData)
         } else {
-            CachedData(url, data)
+            Napier.i("Cache $name does not exists, loading from path: $path")
+            val data = downloadAndVerifyChecksum(path, modelCheckSum, modelChecksumMethod)
+            cacheSave(name, data)
+            Napier.i("Cache $name saved")
+            data
         }
+        return CachedData(getFilePath(name), data)
+    }
+
+    private fun downloadAndVerifyChecksum(
+        path: String,
+        modelCheckSum: String,
+        modelChecksumMethod: HashMethod
+    ): ByteArray {
+        val data = read(path)
+        val checksum = calculateHash(data, modelChecksumMethod)
+        if (checksum != modelCheckSum) {
+            throw IOException("Invalid $path checksum, expected: $checksum, provided: $modelCheckSum")
+        }
+        return data
     }
 
     private data class CachedData(val url: String, val data: ByteArray)

@@ -38,7 +38,6 @@ actual class InterpreterImpl actual constructor(
                                 overrideCacheOnWrongChecksum
                             )
                     } else {
-                        Napier.i("Loading $modelName path: $modelPath")
                         ResourceIOFactory.getInstance()
                             .readOrCacheLoadPath(modelName, modelPath)
                     }

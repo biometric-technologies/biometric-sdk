@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "net.iriscan"
-version = "0.4.4"
+version = "0.4.5"
 
 repositories {
     google()
@@ -68,6 +68,7 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
                 implementation("com.soywiz.korlibs.korio:korio:2.4.11")
                 implementation("io.github.aakira:napier:2.6.1")
+                implementation("io.ktor:ktor-client-core:2.3.3")
             }
         }
         val jvmMain by getting {
@@ -76,6 +77,7 @@ kotlin {
                 implementation("org.bytedeco:tensorflow-lite-platform:2.10.0-1.5.8")
                 implementation("org.bytedeco:opencv:4.6.0-1.5.8")
                 implementation("org.bytedeco:opencv-platform:4.6.0-1.5.8")
+                implementation("io.ktor:ktor-client-okhttp:2.3.3")
             }
         }
         val androidMain by getting {
@@ -83,6 +85,7 @@ kotlin {
                 implementation("org.tensorflow:tensorflow-lite:2.12.0")
                 implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
                 implementation("com.google.mlkit:face-detection:16.1.5")
+                implementation("io.ktor:ktor-client-okhttp:2.3.3")
             }
         }
         val iosArm64Main by getting
@@ -92,7 +95,7 @@ kotlin {
         val iosMain by getting {
             dependsOn(commonMain)
             dependencies {
-                implementation("io.ktor:ktor-client-darwin:2.2.1")
+                implementation("io.ktor:ktor-client-darwin:2.3.3")
             }
             iosArm64Main.dependsOn(this)
             iosX64Main.dependsOn(this)
@@ -115,6 +118,10 @@ android {
     }
     dependencies {
     }
+}
+dependencies {
+    implementation("io.ktor:ktor-client-cio-jvm:2.3.3")
+    implementation("io.ktor:ktor-client-okhttp-jvm:2.3.3")
 }
 
 kotlin.targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {

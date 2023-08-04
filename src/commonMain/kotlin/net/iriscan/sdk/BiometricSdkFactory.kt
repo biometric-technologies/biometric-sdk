@@ -26,8 +26,11 @@ object BiometricSdkFactory : BiometricSdk {
     }
 
     override fun getInstance(): BiometricSdkOperations? {
-        Napier.e("Biometric SDK is not ready. Initialize SDK by calling initialize(...)")
-        return instanceRef.value
+        val instance = instanceRef.value
+        if (instance == null) {
+            Napier.e("Biometric SDK is not ready. Initialize SDK by calling initialize(...)")
+        }
+        return instance
     }
 
 }

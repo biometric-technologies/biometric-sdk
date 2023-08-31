@@ -29,7 +29,11 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
             resized.colors
                 .flatMap {
                     when (image.colorType) {
-                        ImageColorType.RGB -> listOf(it.red().toFloat(), it.green().toFloat(), it.blue().toFloat())
+                        ImageColorType.RGB -> {
+                            val gray = (0.299 * it.red() + 0.587 * it.green() + 0.114 * it.blue()).toFloat()
+                            listOf(gray, gray, gray)
+                        }
+
                         ImageColorType.GRAY -> listOf(it.toFloat(), it.toFloat(), it.toFloat())
                         ImageColorType.BINARY -> throw IllegalArgumentException("Unsupported color type ${image.colorType.name}")
                     }
@@ -63,9 +67,10 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
             val r = data[index].toFloat()
             val g = data[index + 1].toFloat()
             val b = data[index + 2].toFloat()
-            pixels[i] = r
-            pixels[i + 1] = g
-            pixels[i + 2] = b
+            val gray = (0.299 * r + 0.587 * g + 0.114 * b).toFloat()
+            pixels[i] = gray
+            pixels[i + 1] = gray
+            pixels[i + 2] = gray
             i += 3
         }
         CGContextRelease(context)

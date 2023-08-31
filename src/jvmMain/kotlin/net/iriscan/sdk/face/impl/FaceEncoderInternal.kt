@@ -28,14 +28,27 @@ internal actual class FaceEncoderInternal actual constructor(
         val resized = resizeImg(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
         val data = normalize(resized.width, resized.height) { x, y ->
             val color = resized[x, y]
-            Color(color.red(), color.green(), color.blue())
+            val gray = (0.299 * color.red() + 0.587 * color.green() + 0.114 * color.blue()).toInt()
+            Color(gray, gray, gray)
         }
         return encodeInternal(data)
     }
 
     actual fun encode(image: NativeImage): DataBytes {
         val resized = resizeNative(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
-        val data = normalize(resized.width, resized.height) { x, y -> Color(resized.getRGB(x, y)) }
+        val grayscale = BufferedImage(resized.width, resized.height, resized.type)
+        for (x in 0 until resized.width) {
+            for (y in 0 until resized.height) {
+                val pixel = Color(resized.getRGB(x, y))
+                val red = pixel.red
+                val green = pixel.green
+                val blue = pixel.blue
+                val gray = (0.299 * red + 0.587 * green + 0.114 * blue).toInt()
+                val newPixel = Color(gray, gray, gray).rgb
+                grayscale.setRGB(x, y, newPixel)
+            }
+        }
+        val data = normalize(grayscale.width, grayscale.height) { x, y -> Color(grayscale.getRGB(x, y)) }
         return encodeInternal(data)
     }
 

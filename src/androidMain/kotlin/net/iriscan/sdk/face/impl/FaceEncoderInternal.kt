@@ -1,8 +1,8 @@
 package net.iriscan.sdk.face.impl
 
 import android.graphics.Bitmap
-import net.iriscan.sdk.core.image.Image
-import net.iriscan.sdk.core.image.NativeImage
+import android.graphics.Color
+import net.iriscan.sdk.core.image.*
 import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.face.FaceNetModelConfiguration
 import net.iriscan.sdk.tf.InterpreterImpl
@@ -37,16 +37,31 @@ internal actual class FaceEncoderInternal actual constructor(
         .build()
 
     actual fun encode(image: Image): ByteArray {
-        var bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.RGB_565)
-        bitmap.setPixels(image.colors, 0, image.width, 0, 0, image.width, image.height)
-        bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
+        for (x in 0 until image.width) {
+            for (y in 0 until image.height) {
+                val pixel = image[x, y]
+                val gray = (0.299 * pixel.red() + 0.587 * pixel.green() + 0.114 * pixel.blue()).toInt()
+                val newPixel = Color.argb(255, gray, gray, gray)
+                bitmap.setPixel(x, y, newPixel)
+            }
+        }
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(bitmap)).buffer
         bitmap.recycle()
         return encodeInternal(imageBytes)
     }
 
     actual fun encode(image: NativeImage): DataBytes {
-        val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(image)).buffer
+        val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
+        for (x in 0 until image.width) {
+            for (y in 0 until image.height) {
+                val pixel = image.getPixel(x, y)
+                val gray = (0.299 * Color.red(pixel) + 0.587 * Color.green(pixel) + 0.114 * Color.blue(pixel)).toInt()
+                val newPixel = Color.argb(255, gray, gray, gray)
+                bitmap.setPixel(x, y, newPixel)
+            }
+        }
+        val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(bitmap)).buffer
         return encodeInternal(imageBytes)
     }
 

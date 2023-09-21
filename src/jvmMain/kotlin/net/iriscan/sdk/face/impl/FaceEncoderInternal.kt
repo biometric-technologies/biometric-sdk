@@ -8,6 +8,9 @@ import net.iriscan.sdk.tf.InterpreterImpl
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.nio.ByteBuffer
+import kotlin.math.max
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * @author Slava Gornostal
@@ -35,7 +38,7 @@ internal actual class FaceEncoderInternal actual constructor(
     }
 
     actual fun encode(image: NativeImage): DataBytes {
-        val resized = resizeNative(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
+        val resized = internalResizeNativeImage(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
         val grayscale = BufferedImage(resized.width, resized.height, resized.type)
         for (x in 0 until resized.width) {
             for (y in 0 until resized.height) {
@@ -58,24 +61,19 @@ internal actual class FaceEncoderInternal actual constructor(
             for (x in 0 until width) {
                 val color = getColor(x, y)
                 val i = y * width + x
-                rgb[i][0] = (color.red.toFloat() - 127.5f) / 128f
-                rgb[i][1] = (color.green.toFloat() - 127.5f) / 128f
-                rgb[i][2] = (color.blue.toFloat() - 127.5f) / 128f
+                rgb[i][0] = color.red.toFloat()
+                rgb[i][1] = color.green.toFloat()
+                rgb[i][2] = color.blue.toFloat()
             }
         }
-        return rgb.flatMap { it.toList() }.toFloatArray()
-    }
-
-    private fun resizeNative(originalImage: NativeImage, targetWidth: Int, targetHeight: Int): NativeImage {
-        val resizedImage = BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB)
-        var graphics2D = resizedImage.createGraphics()
-        graphics2D.drawImage(originalImage, 0, 0, targetWidth, targetHeight, null)
-        graphics2D.dispose()
-        val tmp = originalImage.getScaledInstance(targetWidth, targetHeight, java.awt.Image.SCALE_AREA_AVERAGING)
-        graphics2D = resizedImage.createGraphics()
-        graphics2D.drawImage(tmp, 0, 0, null)
-        graphics2D.dispose()
-        return resizedImage
+        val pixels = rgb.flatMap { it.toList() }.toFloatArray()
+        val mean = pixels.average().toFloat()
+        var std = sqrt(pixels.map { pi -> (pi - mean).pow(2) }.sum() / pixels.size.toFloat())
+        std = max(std, 1f / sqrt(pixels.size.toFloat()))
+        for (i in pixels.indices) {
+            pixels[i] = (pixels[i] - mean) / std
+        }
+        return pixels
     }
 
     private fun encodeInternal(data: FloatArray): ByteArray {

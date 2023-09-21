@@ -60,9 +60,17 @@ actual class InterpreterImpl actual constructor(
         interpreter.Invoke()
             .tfIfErrorThrow("Could not invoke model")
         outputs.keys.forEach {
-            val out = outputs[it]!! as FloatArray
-            interpreter.typed_output_tensor_float(it)
-                .get(out)
+            when (val out = outputs[it]!!) {
+                is Float -> {
+                    outputs[it] = interpreter.typed_output_tensor_float(it)
+                        .get()
+                }
+
+                is FloatArray -> {
+                    interpreter.typed_output_tensor_float(it)
+                        .get(out)
+                }
+            }
         }
         interpreter.close()
     }

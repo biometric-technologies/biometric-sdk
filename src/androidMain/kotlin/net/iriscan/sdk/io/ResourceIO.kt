@@ -108,8 +108,11 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
     private fun readOrCache(
         name: String,
         path: String,
-    ): CachedData =
-        when (cacheExists(name)) {
+    ): CachedData {
+        if (!path.startsWith("https:")) {
+            return CachedData(name, read(path))
+        }
+        return when (cacheExists(name)) {
             true -> CachedData(name, cacheLoad(name))
             else -> {
                 Napier.i("Cache $name does not exists, loading from path: $path")
@@ -118,6 +121,7 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
                 CachedData(name, data)
             }
         }
+    }
 
     private fun readOrCache(
         name: String,
@@ -126,6 +130,9 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         modelChecksumMethod: HashMethod,
         overrideOnWrongChecksum: Boolean
     ): CachedData {
+        if (!path.startsWith("https:")) {
+            return CachedData(name, downloadAndVerifyChecksum(path, modelCheckSum, modelChecksumMethod))
+        }
         val modelExists = cacheExists(name)
         val data = if (modelExists) {
             val data = cacheLoad(name)

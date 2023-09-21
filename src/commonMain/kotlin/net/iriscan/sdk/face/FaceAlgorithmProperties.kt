@@ -7,7 +7,7 @@ import net.iriscan.sdk.core.io.HashMethod
  */
 class FaceExtractProperties
 
-class FaceEncodeProperties(val faceNetModel: FaceNetModelConfiguration)
+class FaceEncodeProperties(val tfModel: FaceNetModelConfiguration)
 
 class FaceNetModelConfiguration(
     val path: String,
@@ -27,3 +27,22 @@ class FaceNetModelConfiguration(
 }
 
 class FaceMatchProperties(val threshold: Double)
+
+class FaceLivenessDetectionProperties(val tfModel: LivenessModelConfiguration)
+
+class LivenessModelConfiguration(
+    val path: String,
+    val inputWidth: Int,
+    val inputHeight: Int,
+    val threshold: Double,
+    val modelChecksum: String?,
+    val modelChecksumMethod: HashMethod?,
+    val overrideCacheOnWrongChecksum: Boolean?
+) {
+    constructor(
+        path: String,
+        inputWidth: Int,
+        inputHeight: Int,
+        threshold: Double
+    ) : this(path, inputWidth, inputHeight, threshold, null, null, null)
+}

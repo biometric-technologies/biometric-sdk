@@ -10,6 +10,9 @@ import net.iriscan.sdk.utils.toByteArray
 import net.iriscan.sdk.utils.toNSData
 import platform.CoreGraphics.*
 import platform.Foundation.NSData
+import kotlin.math.max
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * @author Slava Gornostal
@@ -64,13 +67,9 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
         var i = 0
         for (j in 0 until pixelCount) {
             val index = j * 4
-            val r = data[index].toFloat()
-            val g = data[index + 1].toFloat()
-            val b = data[index + 2].toFloat()
-            val gray = (0.299 * r + 0.587 * g + 0.114 * b).toFloat()
-            pixels[i] = gray
-            pixels[i + 1] = gray
-            pixels[i + 2] = gray
+            pixels[i] = data[index].toFloat()
+            pixels[i + 1] = data[index + 1].toFloat()
+            pixels[i + 2] = data[index + 2].toFloat()
             i += 3
         }
         CGContextRelease(context)
@@ -79,8 +78,9 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
     }
 
     private fun encodeInternal(pixels: FloatArray): DataBytes {
-        val mean = 127.5f
-        val std = 128.0f
+        val mean = pixels.average().toFloat()
+        var std = sqrt(pixels.map { pi -> (pi - mean).pow(2) }.sum() / pixels.size.toFloat())
+        std = max(std, 1f / sqrt(pixels.size.toFloat()))
         for (i in pixels.indices) {
             pixels[i] = (pixels[i] - mean) / std
         }

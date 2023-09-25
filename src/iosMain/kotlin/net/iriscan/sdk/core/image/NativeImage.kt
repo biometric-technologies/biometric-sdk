@@ -31,7 +31,7 @@ internal actual fun internalReadNativeImage(dataBytes: DataBytes): NativeImage {
     )
     CFDictionarySetValue(cfOptions, keys[0]!!.reinterpret<CFTypeRefVar>(), values[0]!!.reinterpret<CFTypeRefVar>())
     val imageSource = CGImageSourceCreateWithData(cfData, cfOptions)
-    val image = CGImageSourceCreateImageAtIndex(imageSource, 0, null)!!
+    val image = CGImageSourceCreateImageAtIndex(imageSource, 0u, null)!!
     return image.pointed
 }
 

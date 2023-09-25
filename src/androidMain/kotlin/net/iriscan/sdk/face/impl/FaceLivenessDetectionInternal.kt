@@ -30,7 +30,7 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
         .build()
 
     actual fun validate(image: NativeImage): Boolean =
-        calculateScore(image) >= modelConfig.threshold
+        calculateScore(image) < modelConfig.threshold
 
     actual fun score(image: NativeImage): Double =
         calculateScore(image)
@@ -38,9 +38,9 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
     private fun calculateScore(image: NativeImage): Double {
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(image)).buffer
         val faceNetModelInputs = mapOf(0 to imageBytes)
-        val faceNetModelOutputs = mutableMapOf<Int, Any>(0 to 0.0)
+        val faceNetModelOutputs = mutableMapOf<Int, Any>(0 to Array(1) { FloatArray(1) })
         interpreter.invoke(faceNetModelInputs, faceNetModelOutputs)
-        return (faceNetModelOutputs[0] as Double)
+        return (faceNetModelOutputs[0] as Array<FloatArray>)[0][0].toDouble()
     }
 
     class StandardizeOp : TensorOperator {

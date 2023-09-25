@@ -32,19 +32,12 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
     private val bundle = NSBundle.mainBundle
 
     override fun read(path: String): ByteArray = when {
-
-        path.startsWith("bundle:") -> {
-            val pathParts = path.replace("bundle:", "").split(".")
-            val pathUrl = pathParts.take(pathParts.size - 1).joinToString(separator = ".")
-            val pathExt = pathParts.lastOrNull() ?: throw IOException("Invalid path: $path")
-            val bundlePath = bundle.pathForResource(pathUrl, pathExt)
+        path.startsWith("bundle:") ->
+            NSData.dataWithContentsOfFile(getDevicePath(path))?.toByteArray()
                 ?: throw IOException("No file found at path $path")
-            NSData.dataWithContentsOfFile(bundlePath)?.toByteArray()
-                ?: throw IOException("No file found at path $path")
-        }
 
         path.startsWith("file:") ->
-            NSData.dataWithContentsOfFile(path.replace("file:", ""))?.toByteArray()
+            NSData.dataWithContentsOfFile(getDevicePath(path))?.toByteArray()
                 ?: throw IOException("No file found at path $path")
 
         path.startsWith("https:") -> runBlocking {
@@ -107,6 +100,9 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         name: String,
         path: String,
     ): CachedData {
+        if (!path.startsWith("https:")) {
+            return CachedData(getDevicePath(path), read(path))
+        }
         val url = getFilePath(name)
         return when (cacheExists(name)) {
             true -> CachedData(url, cacheLoad(name))
@@ -127,6 +123,9 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         modelChecksumMethod: HashMethod,
         overrideOnWrongChecksum: Boolean
     ): CachedData {
+        if (!path.startsWith("https:")) {
+            return CachedData(getDevicePath(path), downloadAndVerifyChecksum(path, modelCheckSum, modelChecksumMethod))
+        }
         val modelExists = cacheExists(name)
         val data = if (modelExists) {
             val data = cacheLoad(name)
@@ -173,4 +172,17 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         NSFileManager.defaultManager.URLForDirectory(NSCachesDirectory, NSUserDomainMask, null, true, errorPointer)!!
             .URLByAppendingPathComponent(name)?.path ?: throw IOException("Invalid file name $name")
     }
+
+    private fun getDevicePath(path: String): String =
+        when {
+            path.startsWith("bundle:") -> {
+                val pathParts = path.replace("bundle:", "").split(".")
+                val pathUrl = pathParts.take(pathParts.size - 1).joinToString(separator = ".")
+                val pathExt = pathParts.lastOrNull() ?: throw IOException("Invalid path: $path")
+                bundle.pathForResource(pathUrl, pathExt) ?: throw IOException("No file found at path $path")
+            }
+
+            path.startsWith("file:") -> path.replace("file:", "")
+            else -> throw IOException("Invalid device path location: $path")
+        }
 }

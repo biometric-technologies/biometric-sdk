@@ -41,8 +41,7 @@ internal actual class FaceEncoderInternal actual constructor(
         for (x in 0 until image.width) {
             for (y in 0 until image.height) {
                 val pixel = image[x, y]
-                val gray = (0.299 * pixel.red() + 0.587 * pixel.green() + 0.114 * pixel.blue()).toInt()
-                val newPixel = Color.argb(255, gray, gray, gray)
+                val newPixel = Color.argb(255, pixel.red(), pixel.green(), pixel.blue())
                 bitmap.setPixel(x, y, newPixel)
             }
         }
@@ -52,16 +51,7 @@ internal actual class FaceEncoderInternal actual constructor(
     }
 
     actual fun encode(image: NativeImage): DataBytes {
-        val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
-        for (x in 0 until image.width) {
-            for (y in 0 until image.height) {
-                val pixel = image.getPixel(x, y)
-                val gray = (0.299 * Color.red(pixel) + 0.587 * Color.green(pixel) + 0.114 * Color.blue(pixel)).toInt()
-                val newPixel = Color.argb(255, gray, gray, gray)
-                bitmap.setPixel(x, y, newPixel)
-            }
-        }
-        val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(bitmap)).buffer
+        val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(image)).buffer
         return encodeInternal(imageBytes)
     }
 

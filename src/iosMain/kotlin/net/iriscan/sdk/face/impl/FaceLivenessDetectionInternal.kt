@@ -8,6 +8,7 @@ import net.iriscan.sdk.utils.toByteArray
 import net.iriscan.sdk.utils.toNSData
 import platform.CoreGraphics.*
 import platform.Foundation.NSData
+import platform.UIKit.UIColor
 
 /**
  * @author Slava Gornostal
@@ -45,8 +46,22 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
             colorSpace,
             bitmapInfo
         )
-        CGContextSetInterpolationQuality(context, kCGInterpolationHigh)
-        CGContextDrawImage(context, CGRectMake(0.0, 0.0, newWidth.toDouble(), newHeight.toDouble()), image.ptr)
+        CGContextSetFillColorWithColor(context, UIColor.blackColor.CGColor)
+        val imageWidth = CGImageGetWidth(image.ptr)
+        val imageHeight = CGImageGetHeight(image.ptr)
+        val aspectRatio = imageWidth.toDouble() / imageHeight.toDouble()
+        val (rescaledWidth, rescaledHeight) = when (imageWidth > imageHeight) {
+            true -> newWidth.toDouble() to (newWidth / aspectRatio)
+            false -> (newHeight / aspectRatio) to newHeight.toDouble()
+        }
+        CGContextFillRect(context, CGRectMake(0.0, 0.0, rescaledWidth, rescaledHeight))
+        val rect = CGRectMake(
+            (newWidth - rescaledWidth) / 2,
+            (newHeight - rescaledHeight) / 2,
+            rescaledWidth,
+            rescaledHeight
+        )
+        CGContextDrawImage(context, rect, image.ptr)
         val pixels = FloatArray(pixelCount * 3)
         var i = 0
         for (j in 0 until pixelCount) {
@@ -80,5 +95,4 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
             .first()
         return result.toDouble()
     }
-
 }

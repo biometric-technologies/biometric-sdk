@@ -67,9 +67,9 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
         var i = 0
         for (j in 0 until pixelCount) {
             val index = j * 4
-            pixels[i] = data[index].toFloat()
-            pixels[i + 1] = data[index + 1].toFloat()
-            pixels[i + 2] = data[index + 2].toFloat()
+            pixels[i] = data[index].toFloat() / 255f
+            pixels[i + 1] = data[index + 1].toFloat() / 255f
+            pixels[i + 2] = data[index + 2].toFloat() / 255f
             i += 3
         }
         CGContextRelease(context)
@@ -78,12 +78,12 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
     }
 
     private fun encodeInternal(pixels: FloatArray): DataBytes {
-        val mean = pixels.average().toFloat()
+        /*val mean = pixels.average().toFloat()
         var std = sqrt(pixels.map { pi -> (pi - mean).pow(2) }.sum() / pixels.size.toFloat())
         std = max(std, 1f / sqrt(pixels.size.toFloat()))
         for (i in pixels.indices) {
             pixels[i] = (pixels[i] - mean) / std
-        }
+        }*/
         val bytes = pixels
             .flatMap {
                 val bits = it.toRawBits()

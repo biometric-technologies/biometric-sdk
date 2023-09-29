@@ -1,6 +1,13 @@
 name: Validate project build
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - master
+      - dev
 
 jobs:
   build:

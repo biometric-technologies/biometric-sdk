@@ -6,6 +6,7 @@ import net.iriscan.sdk.core.utils.resizeImg
 import net.iriscan.sdk.face.FaceNetModelConfiguration
 import net.iriscan.sdk.tf.InterpreterImpl
 import java.awt.Color
+import java.awt.image.BufferedImage
 import java.nio.ByteBuffer
 import kotlin.math.max
 import kotlin.math.pow
@@ -36,9 +37,21 @@ internal actual class FaceEncoderInternal actual constructor(
     }
 
     actual fun encode(image: NativeImage): DataBytes {
-        val resized = internalResizeNativeImage(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
+        val resized = resizeBillinear(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
         val data = normalize(resized.width, resized.height) { x, y -> Color(resized.getRGB(x, y)) }
         return encodeInternal(data)
+    }
+
+    private fun resizeBillinear(image: NativeImage, width: Int, height: Int): NativeImage {
+        val resizedImage = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+        var graphics2D = resizedImage.createGraphics()
+        graphics2D.drawImage(image, 0, 0, width, height, null)
+        graphics2D.dispose()
+        val tmp = image.getScaledInstance(width, height, java.awt.Image.SCALE_AREA_AVERAGING)
+        graphics2D = resizedImage.createGraphics()
+        graphics2D.drawImage(tmp, 0, 0, null)
+        graphics2D.dispose()
+        return resizedImage
     }
 
     private fun normalize(width: Int, height: Int, getColor: (x: Int, y: Int) -> Color): FloatArray {

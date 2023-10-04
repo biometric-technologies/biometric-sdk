@@ -1,17 +1,24 @@
 package net.iriscan.sdk.face.impl
 
 import net.iriscan.sdk.core.image.*
+import net.iriscan.sdk.core.utils.createImg
 import org.bytedeco.javacpp.BytePointer
 import org.bytedeco.opencv.global.opencv_core
+import org.bytedeco.opencv.global.opencv_imgcodecs.imencode
+import org.bytedeco.opencv.global.opencv_imgproc
 import org.bytedeco.opencv.opencv_core.Mat
-import org.bytedeco.opencv.opencv_core.Rect
+import org.bytedeco.opencv.opencv_core.Point2f
 import org.bytedeco.opencv.opencv_core.RectVector
 import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier
+import java.awt.Color
+import java.awt.image.BufferedImage
 import java.awt.image.DataBufferByte
+import java.io.ByteArrayInputStream
 import java.io.File
-import java.nio.ByteBuffer
 import java.nio.file.Files
+import javax.imageio.ImageIO
 import kotlin.io.path.absolutePathString
+import kotlin.math.atan2
 
 /**
  * @author Slava Gornostal
@@ -33,25 +40,26 @@ internal actual class FaceExtractorInternal {
     }
 
     actual fun extract(image: Image): Image? {
-        val pixels = image.colors.flatMap {
-            ByteBuffer.allocate(3).put(byteArrayOf(it.blue().toByte(), it.green().toByte(), it.red().toByte()))
-                .array()
-                .toList()
+        val bufferedImage = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
+        val data = image.colors.flatMap { listOf(it.red(), it.green(), it.blue()) }.toIntArray()
+        bufferedImage.raster.setPixels(0, 0, image.width, image.height, data)
+        val face = extractInternal(bufferedImage) ?: return null
+        return createImg(
+            width = face.width,
+            height = face.height,
+            type = ImageColorType.RGB
+        ) { x, y ->
+            val rawColor = Color(face.getRGB(x, y))
+            createColor(rawColor.red, rawColor.green, rawColor.blue)
         }
-            .toByteArray()
-        val mat = Mat(image.height, image.width, opencv_core.CV_8UC3, BytePointer(*pixels))
-        val faceRect = extractInternal(mat) ?: return null
-        return image[faceRect.x()..faceRect.x() + faceRect.width(), faceRect.y()..faceRect.y() + faceRect.height()]
     }
 
-    actual fun extract(image: NativeImage): NativeImage? {
+    actual fun extract(image: NativeImage): NativeImage? =
+        extractInternal(image)
+
+    private fun extractInternal(image: BufferedImage): BufferedImage? {
         val data = (image.raster.dataBuffer as DataBufferByte).data
-        val mat = Mat(image.height, image.width, opencv_core.CV_8UC3, BytePointer(*data))
-        val faceRect = extractInternal(mat) ?: return null
-        return image.getSubimage(faceRect.x(), faceRect.y(), faceRect.width(), faceRect.height())
-    }
-
-    private fun extractInternal(input: Mat): Rect? {
+        val input = Mat(image.height, image.width, opencv_core.CV_8UC3, BytePointer(*data))
         val result = RectVector()
         classifier.detectMultiScale(input, result)
         val faces = result.get()
@@ -59,12 +67,21 @@ internal actual class FaceExtractorInternal {
             return null
         }
         val rect = faces[0]
-        if (rect.x() in 1 until input.cols() && (rect.x() + rect.width()) in 1 until input.cols() &&
-            rect.y() in 1 until input.rows() && (rect.y() + rect.height()) in 1 until input.rows()
+        if (
+            !(rect.x() in 1 until input.cols() && (rect.x() + rect.width()) in 1 until input.cols() &&
+                    rect.y() in 1 until input.rows() && (rect.y() + rect.height()) in 1 until input.rows())
         ) {
-            return rect
+            return null
         }
-        return null
+        val center = Point2f((rect.x() + rect.width() / 2.0).toFloat(), (rect.y() + rect.height() / 2.0).toFloat())
+        val angle = atan2(rect.y().toDouble(), (rect.x() + rect.width()).toDouble()) * 180.0 / Math.PI
+        val rotationMatrix = opencv_imgproc.getRotationMatrix2D(center, angle, 1.0)
+        val rotatedImage = Mat()
+        opencv_imgproc.warpAffine(input, rotatedImage, rotationMatrix, input.size())
+        val bytes = BytePointer()
+        imencode(".jpg", rotatedImage, bytes)
+        val byteArray = bytes.asByteBuffer().array()
+        return ImageIO.read(ByteArrayInputStream(byteArray))
     }
 
 }

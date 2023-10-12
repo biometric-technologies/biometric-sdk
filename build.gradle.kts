@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "net.iriscan"
-version = "0.5.3"
+version = "0.5.4"
 
 repositories {
     google()
@@ -109,7 +109,7 @@ android {
     compileSdk = 33
 
     defaultConfig {
-        minSdk = 24
+        minSdk = 23
         targetSdk = 33
     }
     compileOptions {

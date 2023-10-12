@@ -54,7 +54,7 @@ internal actual class FaceExtractorInternal actual constructor() {
             runBlocking { faceRect.await() }
         } ?: return null
         val leftEye = face.landmarks?.leftEye?.normalizedPoints?.pointed
-        val rightEye = face.landmarks?.leftEye?.normalizedPoints?.pointed
+        val rightEye = face.landmarks?.rightEye?.normalizedPoints?.pointed
         if (leftEye == null || rightEye == null) {
             return null
         }
@@ -82,7 +82,7 @@ internal actual class FaceExtractorInternal actual constructor() {
             }
         } ?: return null
         val cropped = CGImageCreateWithImageInRect(cgImage, faceBoxNormalized)!!
-        val rotated = rotate(cropped, angle)
+        val rotated = rotate(cropped, -angle)
         return rotated.pointed
     }
 
@@ -92,6 +92,7 @@ internal actual class FaceExtractorInternal actual constructor() {
         UIGraphicsBeginImageContext(CGSizeMake(width, height))
         val context = UIGraphicsGetCurrentContext()
         CGContextTranslateCTM(context, width * .5, height * .5)
+        CGContextScaleCTM(context, 1.0, -1.0)
         CGContextRotateCTM(context, angle)
         val rect = CGRectMake(-width * .5, -height * .5, width, height)
         CGContextDrawImage(context, rect, cgImage)

@@ -12,9 +12,13 @@ interface FaceLivenessDetection {
      * */
     fun validate(nativeImage: NativeImage): Boolean
 
+    fun extractAndValidate(nativeImage: NativeImage): Boolean?
+
     /**
      * Returns liveness validation score of the image
      * */
     fun score(nativeImage: NativeImage): Double
+
+    fun extractAndScore(nativeImage: NativeImage): Double?
 
 }

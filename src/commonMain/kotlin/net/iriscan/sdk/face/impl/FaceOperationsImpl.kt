@@ -55,8 +55,14 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
                 override fun validate(nativeImage: NativeImage): Boolean =
                     internal.validate(nativeImage)
 
+                override fun extractAndValidate(nativeImage: NativeImage): Boolean? =
+                    extractor().extract(nativeImage)?.let { internal.validate(it) }
+
                 override fun score(nativeImage: NativeImage): Double =
                     internal.score(nativeImage)
+
+                override fun extractAndScore(nativeImage: NativeImage): Double? =
+                    extractor().extract(nativeImage)?.let { internal.score(it) }
             }
         }
 

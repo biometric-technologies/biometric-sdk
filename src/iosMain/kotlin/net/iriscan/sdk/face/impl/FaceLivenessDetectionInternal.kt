@@ -25,7 +25,7 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
     )
 
     actual fun validate(image: NativeImage): Boolean =
-        calculateScore(image) < modelConfig.threshold
+        calculateScore(image) > modelConfig.threshold
 
     actual fun score(image: NativeImage): Double =
         calculateScore(image)
@@ -63,12 +63,14 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
         )
         CGContextDrawImage(context, rect, image.ptr)
         val pixels = FloatArray(pixelCount * 3)
+        val std = 0.5f
+        val mean = 0.5f
         var i = 0
         for (j in 0 until pixelCount) {
             val index = j * 4
-            pixels[i] = data[index].toFloat() / 255f
-            pixels[i + 1] = data[index + 1].toFloat() / 255f
-            pixels[i + 2] = data[index + 2].toFloat() / 255f
+            pixels[i] = ((data[index].toFloat() / 255f) - mean) / std
+            pixels[i + 1] = ((data[index + 1].toFloat() / 255f) - mean) / std
+            pixels[i + 2] = ((data[index + 2].toFloat() / 255f) - mean) / std
             i += 3
         }
         CGContextRelease(context)
@@ -92,7 +94,6 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
                 }
                 Float.fromBits(bits)
             }
-            .first()
-        return result.toDouble()
+        return result.average()
     }
 }

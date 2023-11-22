@@ -22,7 +22,7 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
     )
 
     actual fun validate(image: NativeImage): Boolean =
-        calculateScore(image) >= modelConfig.threshold
+        calculateScore(image) > modelConfig.threshold
 
     actual fun score(image: NativeImage): Double =
         calculateScore(image)
@@ -31,9 +31,9 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
         val resized = resizeKeepAspectRatio(image, modelConfig.inputWidth, modelConfig.inputHeight)
         val data = normalize(resized.width, resized.height) { x, y -> Color(resized.getRGB(x, y)) }
         val modelInputs = mapOf(0 to data)
-        val modelOutputs = mutableMapOf<Int, Any>(0 to 0f)
+        val modelOutputs = mutableMapOf<Int, Any>(0 to FloatArray(192))
         interpreter.invoke(modelInputs, modelOutputs)
-        return (modelOutputs[0] as Float).toDouble()
+        return (modelOutputs[0] as FloatArray).average()
     }
 
     private fun resizeKeepAspectRatio(image: NativeImage, width: Int, height: Int): NativeImage {
@@ -60,13 +60,15 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
 
     private fun normalize(width: Int, height: Int, getColor: (x: Int, y: Int) -> Color): FloatArray {
         val rgb = Array(width * height) { floatArrayOf(0f, 0f, 0f) }
+        val mean = 0.5f
+        val std = 0.5f
         for (y in 0 until height) {
             for (x in 0 until width) {
                 val color = getColor(x, y)
                 val i = y * width + x
-                rgb[i][0] = color.red.toFloat() / 255f
-                rgb[i][1] = color.green.toFloat() / 255f
-                rgb[i][2] = color.blue.toFloat() / 255f
+                rgb[i][0] = ((color.red.toFloat() / 255f) - mean) / std
+                rgb[i][1] = ((color.green.toFloat() / 255f) - mean) / std
+                rgb[i][2] = ((color.blue.toFloat() / 255f) - mean) / std
             }
         }
         return rgb.flatMap { it.toList() }.toFloatArray()

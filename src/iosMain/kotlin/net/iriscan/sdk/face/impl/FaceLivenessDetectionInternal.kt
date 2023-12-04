@@ -83,9 +83,9 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
             }
             .toByteArray()
         val inputs = mapOf(0 to bytes.toNSData())
-        val outputs = mutableMapOf<Int, Any>(0 to NSData())
+        val outputs = mutableMapOf<Int, Any>(0 to NSData(), 1 to NSData())
         interpreter.invoke(inputs, outputs)
-        val result = (outputs[0] as NSData).toByteArray()
+        val result = (outputs[1] as NSData).toByteArray()
             .toList()
             .chunked(4)
             .map {
@@ -94,6 +94,6 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
                 }
                 Float.fromBits(bits)
             }
-        return result.average()
+        return result.first().toDouble()
     }
 }

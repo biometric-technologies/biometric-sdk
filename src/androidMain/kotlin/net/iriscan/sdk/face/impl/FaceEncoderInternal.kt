@@ -2,6 +2,8 @@ package net.iriscan.sdk.face.impl
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import com.soywiz.kmem.length
+import io.github.aakira.napier.Napier
 import net.iriscan.sdk.core.image.*
 import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.face.FaceNetModelConfiguration
@@ -36,7 +38,8 @@ internal actual class FaceEncoderInternal actual constructor(
         .add(StandardizeOp())
         .build()
 
-    actual fun encode(image: Image): ByteArray {
+    actual fun encode(image: Image, traceId: String?): ByteArray {
+        Napier.d(tag = traceId) { "Encoding sdk image [${image.width},${image.height}]" }
         val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
         for (x in 0 until image.width) {
             for (y in 0 until image.height) {
@@ -45,21 +48,27 @@ internal actual class FaceEncoderInternal actual constructor(
                 bitmap.setPixel(x, y, newPixel)
             }
         }
+        Napier.d(tag = traceId) { "Bitmap image created" }
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(bitmap)).buffer
         bitmap.recycle()
+        Napier.d(tag = traceId) { "Image pre-processed, ${imageBytes.length} bytes resolved" }
         return encodeInternal(imageBytes)
     }
 
-    actual fun encode(image: NativeImage): DataBytes {
+    actual fun encode(image: NativeImage, traceId: String?): DataBytes {
+        Napier.d(tag = traceId) { "Encoding native image [${image.width},${image.height}]" }
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(image)).buffer
-        return encodeInternal(imageBytes)
+        Napier.d(tag = traceId) { "Image pre-processed, ${imageBytes.length} bytes resolved" }
+        return encodeInternal(imageBytes, traceId)
     }
 
-    private fun encodeInternal(imageBytes: ByteBuffer): ByteArray {
+    private fun encodeInternal(imageBytes: ByteBuffer, traceId: String? = null): ByteArray {
+        Napier.d(tag = traceId) { "Encoding image bytes with FaceNet interpreter" }
         val faceNetModelInputs = mapOf(0 to imageBytes)
         val faceNetModelOutputs = mutableMapOf<Int, Any>(0 to Array(1) { FloatArray(faceNetModelConfig.outputLength) })
-        interpreter.invoke(faceNetModelInputs, faceNetModelOutputs)
+        interpreter.invoke(faceNetModelInputs, faceNetModelOutputs, traceId)
         val template = (faceNetModelOutputs[0] as Array<FloatArray>)[0]
+        Napier.d(tag = traceId) { "Encoding done, result template size: ${template.size}" }
         val bb = ByteBuffer.allocate(template.size * 4)
         bb.asFloatBuffer().put(template)
         return bb.array()

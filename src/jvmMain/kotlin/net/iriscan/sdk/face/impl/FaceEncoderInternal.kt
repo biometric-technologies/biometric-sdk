@@ -27,7 +27,7 @@ internal actual class FaceEncoderInternal actual constructor(
         faceNetModelConfig.overrideCacheOnWrongChecksum
     )
 
-    actual fun encode(image: Image): ByteArray {
+    actual fun encode(image: Image, traceId: String?): ByteArray {
         val resized = resizeImg(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
         val data = normalize(resized.width, resized.height) { x, y ->
             val color = resized[x, y]
@@ -36,7 +36,7 @@ internal actual class FaceEncoderInternal actual constructor(
         return encodeInternal(data)
     }
 
-    actual fun encode(image: NativeImage): DataBytes {
+    actual fun encode(image: NativeImage, traceId: String?): DataBytes {
         val resized = resizeBillinear(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
         val data = normalize(resized.width, resized.height) { x, y -> Color(resized.getRGB(x, y)) }
         return encodeInternal(data)

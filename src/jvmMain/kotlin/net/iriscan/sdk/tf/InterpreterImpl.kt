@@ -42,7 +42,7 @@ actual class InterpreterImpl actual constructor(
         modelLen = modelBytes.size.toLong()
     }
 
-    override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>) {
+    override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>, traceId: String?) {
         val interpreter = org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
         // TODO: improve reuse builder on multiple threads
         val modelBuilder = InterpreterBuilder(

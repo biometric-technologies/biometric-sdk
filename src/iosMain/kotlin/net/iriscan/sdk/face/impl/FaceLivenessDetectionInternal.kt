@@ -1,5 +1,6 @@
 package net.iriscan.sdk.face.impl
 
+import io.github.aakira.napier.Napier
 import kotlinx.cinterop.*
 import net.iriscan.sdk.core.image.NativeImage
 import net.iriscan.sdk.face.LivenessModelConfiguration
@@ -24,13 +25,22 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
         modelConfig.overrideCacheOnWrongChecksum
     )
 
-    actual fun validate(image: NativeImage): Boolean =
-        calculateScore(image) > modelConfig.threshold
+    actual fun validate(image: NativeImage, traceId: String?): Boolean =
+        calculateScore(image, traceId) > modelConfig.threshold
 
-    actual fun score(image: NativeImage): Double =
-        calculateScore(image)
+    actual fun score(image: NativeImage, traceId: String?): Double {
+        Napier.d(tag = traceId) {
+            "Validate face liveness on native image [${CGImageGetWidth(image.ptr)},${
+                CGImageGetHeight(
+                    image.ptr
+                )
+            }]"
+        }
+        return calculateScore(image, traceId)
+    }
 
-    private fun calculateScore(image: NativeImage): Double {
+    private fun calculateScore(image: NativeImage, traceId: String?): Double {
+        Napier.d(tag = traceId) { "Pre-processing input image" }
         val newWidth = modelConfig.inputWidth
         val newHeight = modelConfig.inputHeight
         val pixelCount = newWidth * newHeight
@@ -82,6 +92,7 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
                     .reversed()
             }
             .toByteArray()
+        Napier.d(tag = traceId) { "Image pre-processed, ${bytes.size} bytes resolved" }
         val inputs = mapOf(0 to bytes.toNSData())
         val outputs = mutableMapOf<Int, Any>(0 to NSData(), 1 to NSData())
         interpreter.invoke(inputs, outputs)
@@ -94,6 +105,8 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
                 }
                 Float.fromBits(bits)
             }
-        return result.first().toDouble()
+        val score = result.first().toDouble()
+        Napier.d(tag = traceId) { "Resolved liveness score: $score" }
+        return score
     }
 }

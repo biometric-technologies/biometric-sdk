@@ -49,11 +49,11 @@ actual class InterpreterImpl actual constructor(
         }
     }
 
-    override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>) {
+    override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>, traceId: String?) {
         try {
             doInvoke(inputs, outputs)
         } catch (e: NSErrorException) {
-            Napier.e("Interpreter invoke error", e)
+            Napier.e(tag = traceId, throwable = e) { "Interpreter invoke error" }
             throw RuntimeException("Error performing tflite invoke function: ${e.message}")
         }
     }

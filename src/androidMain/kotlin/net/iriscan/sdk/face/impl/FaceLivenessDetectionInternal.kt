@@ -1,5 +1,7 @@
 package net.iriscan.sdk.face.impl
 
+import com.soywiz.kmem.length
+import io.github.aakira.napier.Napier
 import net.iriscan.sdk.core.image.NativeImage
 import net.iriscan.sdk.face.LivenessModelConfiguration
 import net.iriscan.sdk.tf.InterpreterImpl
@@ -25,26 +27,33 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
         modelConfig.overrideCacheOnWrongChecksum
     )
     private val imageTensorProcessor = ImageProcessor.Builder()
-        .add(ResizeOp(224, 224, ResizeOp.ResizeMethod.BILINEAR))
+        .add(ResizeOp(modelConfig.inputHeight, modelConfig.inputWidth, ResizeOp.ResizeMethod.BILINEAR))
         .add(StandardizeOp())
         .build()
 
-    actual fun validate(image: NativeImage): Boolean =
-        calculateScore(image) > modelConfig.threshold
+    actual fun validate(image: NativeImage, traceId: String?): Boolean {
+        Napier.d(tag = traceId) { "Validate face liveness on native image [${image.width},${image.height}]" }
+        return calculateScore(image) > modelConfig.threshold
+    }
 
-    actual fun score(image: NativeImage): Double =
-        calculateScore(image)
+    actual fun score(image: NativeImage, traceId: String?): Double {
+        Napier.d(tag = traceId) { "Calculate face liveness score on native image [${image.width},${image.height}]" }
+        return calculateScore(image)
+    }
 
-    private fun calculateScore(image: NativeImage): Double {
+    private fun calculateScore(image: NativeImage, traceId: String? = null): Double {
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(image)).buffer
+        Napier.d(tag = traceId) { "Image pre-processed, ${imageBytes.length} bytes resolved" }
         val modelInputs = mapOf(0 to imageBytes)
         val output = Array(1) { Array(1) { Array(14) { FloatArray(14) } } }
         val modelOutputs = mutableMapOf<Int, Any>(0 to output)
-        interpreter.invoke(modelInputs, modelOutputs)
-        val mask = output.flatten().toTypedArray()
+        interpreter.invoke(modelInputs, modelOutputs, traceId)
+        val score = output.flatten().toTypedArray()
             .flatten().toTypedArray()
             .flatMap { it.asList() }
-        return mask.average()
+            .average()
+        Napier.d(tag = traceId) { "Resolved liveness score: $score" }
+        return score
     }
 
     class StandardizeOp : TensorOperator {

@@ -21,10 +21,10 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
         modelConfig.overrideCacheOnWrongChecksum
     )
 
-    actual fun validate(image: NativeImage): Boolean =
+    actual fun validate(image: NativeImage, traceId: String?): Boolean =
         calculateScore(image) > modelConfig.threshold
 
-    actual fun score(image: NativeImage): Double =
+    actual fun score(image: NativeImage, traceId: String?): Double =
         calculateScore(image)
 
     private fun calculateScore(image: NativeImage): Double {

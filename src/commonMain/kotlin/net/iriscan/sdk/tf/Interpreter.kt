@@ -6,7 +6,7 @@ import net.iriscan.sdk.core.io.HashMethod
  * @author Slava Gornostal
  */
 interface Interpreter {
-    fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>)
+    fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>, traceId: String? = null)
 }
 
 expect class InterpreterImpl(

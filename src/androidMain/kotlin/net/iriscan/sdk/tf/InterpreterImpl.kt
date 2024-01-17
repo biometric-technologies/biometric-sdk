@@ -2,7 +2,6 @@ package net.iriscan.sdk.tf
 
 import net.iriscan.sdk.core.io.HashMethod
 import net.iriscan.sdk.io.ResourceIOFactory
-import net.iriscan.sdk.tf.Interpreter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -38,7 +37,7 @@ actual class InterpreterImpl actual constructor(
         interpreter = org.tensorflow.lite.Interpreter(modelBuffer, options)
     }
 
-    override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>) {
+    override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>, traceId: String?) {
         interpreter.runForMultipleInputsOutputs(Array(inputs.size) { i -> inputs[i] }, outputs)
     }
 }

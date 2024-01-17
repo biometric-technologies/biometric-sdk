@@ -103,13 +103,15 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         name: String,
         path: String,
     ): CachedData {
+        Napier.d("Reading cache $name")
         if (!path.startsWith("https:")) {
+            Napier.d("Reading a non-http(s) resource at path $path")
             return CachedData(name, read(path))
         }
         return when (cacheExists(name)) {
             true -> CachedData(name, cacheLoad(name))
             else -> {
-                Napier.i("Cache $name does not exists, loading from path: $path")
+                Napier.w("Cache $name does not exists, loading from path: $path")
                 val data = read(path)
                 cacheSave(name, data)
                 CachedData(name, data)
@@ -124,7 +126,9 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         modelChecksumMethod: HashMethod,
         overrideOnWrongChecksum: Boolean
     ): CachedData {
+        Napier.d("Reading cache $name")
         if (!path.startsWith("https:")) {
+            Napier.d("Reading a non-http(s) resource at path $path")
             return CachedData(name, downloadAndVerifyChecksum(path, modelCheckSum, modelChecksumMethod))
         }
         val modelExists = cacheExists(name)
@@ -133,10 +137,10 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
             if (overrideOnWrongChecksum) {
                 val checkSum = calculateHash(data, modelChecksumMethod)
                 if (checkSum != modelCheckSum) {
-                    Napier.i("Cache $name exists with different checksum $checkSum, loading new from path: $path")
+                    Napier.w("Cache $name exists with different checksum $checkSum, loading new from path: $path")
                     val newData = downloadAndVerifyChecksum(path, modelCheckSum, modelChecksumMethod)
                     cacheSave(name, newData)
-                    Napier.i("Cache $name saved")
+                    Napier.d("Cache $name saved")
                     newData
                 } else {
                     data
@@ -145,10 +149,10 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
                 data
             }
         } else {
-            Napier.i("Cache $name does not exists, loading from path: $path")
+            Napier.d("Cache $name does not exists, loading from path: $path")
             val data = downloadAndVerifyChecksum(path, modelCheckSum, modelChecksumMethod)
             cacheSave(name, data)
-            Napier.i("Cache $name saved")
+            Napier.d("Cache $name saved")
             data
         }
         return CachedData(name, data)
@@ -160,9 +164,11 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         modelChecksumMethod: HashMethod
     ): ByteArray {
         val data = read(path)
+        Napier.d("Cache downloaded, verifying checksum")
         val checksum = calculateHash(data, modelChecksumMethod)
         if (checksum != modelCheckSum) {
-            throw IOException("Invalid $path checksum, expected: $checksum, provided: $modelCheckSum")
+            Napier.d("Invalid checksum for file $path, expected: $modelCheckSum calculated: $checksum")
+            throw IOException("Invalid $path checksum, expected: $checksum, calculated: $modelCheckSum")
         }
         return data
     }

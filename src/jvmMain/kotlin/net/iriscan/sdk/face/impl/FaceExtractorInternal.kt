@@ -39,11 +39,11 @@ internal actual class FaceExtractorInternal {
         classifier = CascadeClassifier(classifierFile.absolutePathString())
     }
 
-    actual fun extract(image: Image): Image? {
+    actual fun extract(image: Image, rotateOnWrongOrientation: Boolean, traceId: String?): Image? {
         val bufferedImage = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
         val data = image.colors.flatMap { listOf(it.red(), it.green(), it.blue()) }.toIntArray()
         bufferedImage.raster.setPixels(0, 0, image.width, image.height, data)
-        val face = extractInternal(bufferedImage) ?: return null
+        val face = extractInternal(bufferedImage, rotateOnWrongOrientation) ?: return null
         return createImg(
             width = face.width,
             height = face.height,
@@ -54,10 +54,10 @@ internal actual class FaceExtractorInternal {
         }
     }
 
-    actual fun extract(image: NativeImage): NativeImage? =
-        extractInternal(image)
+    actual fun extract(image: NativeImage, rotateOnWrongOrientation: Boolean, traceId: String?): NativeImage? =
+        extractInternal(image, rotateOnWrongOrientation)
 
-    private fun extractInternal(image: BufferedImage): BufferedImage? {
+    private fun extractInternal(image: BufferedImage, rotateOnWrongOrientation: Boolean): BufferedImage? {
         val data = (image.raster.dataBuffer as DataBufferByte).data
         val input = Mat(image.height, image.width, opencv_core.CV_8UC3, BytePointer(*data))
         val result = RectVector()

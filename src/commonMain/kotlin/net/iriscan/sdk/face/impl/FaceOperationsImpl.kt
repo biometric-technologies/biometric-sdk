@@ -3,6 +3,7 @@ package net.iriscan.sdk.face.impl
 import net.iriscan.sdk.FaceConfig
 import net.iriscan.sdk.core.image.NativeImage
 import net.iriscan.sdk.core.io.DataBytes
+import net.iriscan.sdk.core.utils.generateTraceID
 import net.iriscan.sdk.face.*
 
 /**
@@ -12,20 +13,24 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
 
     private val extractor: FaceExtractor? =
         config.extractor?.let {
-            val internal = FaceExtractorInternal()
+            val faceExtractorInternal = FaceExtractorInternal()
             object : FaceExtractor {
                 override fun extract(nativeImage: NativeImage): NativeImage? =
-                    internal.extract(nativeImage)
+                    faceExtractorInternal.extract(nativeImage, true)
             }
         }
 
     private val encoder: FaceEncoder? =
         config.encoder?.let {
-            val internal = FaceEncoderInternal(it.tfModel)
+            val faceEncoderInternal = FaceEncoderInternal(it.tfModel)
+            val faceExtractorInternal = FaceExtractorInternal()
             object : FaceEncoder {
-                override fun encode(nativeImage: NativeImage): DataBytes = internal.encode(nativeImage)
-                override fun extractAndEncode(nativeImage: NativeImage): DataBytes? =
-                    extractor().extract(nativeImage)?.let { internal.encode(it) }
+                override fun encode(nativeImage: NativeImage): DataBytes = faceEncoderInternal.encode(nativeImage)
+                override fun extractAndEncode(nativeImage: NativeImage): DataBytes? {
+                    val traceId = generateTraceID()
+                    return faceExtractorInternal.extract(nativeImage, true, traceId)
+                        ?.let { faceEncoderInternal.encode(it, traceId) }
+                }
             }
         }
     private val matcher: FaceMatcher? =
@@ -50,19 +55,26 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
 
     private val liveness: FaceLivenessDetection? =
         config.liveness?.let {
-            val internal = FaceLivenessDetectionInternal(it.tfModel)
+            val livenessDetectorInternal = FaceLivenessDetectionInternal(it.tfModel)
+            val extractorInternal = FaceExtractorInternal()
             object : FaceLivenessDetection {
                 override fun validate(nativeImage: NativeImage): Boolean =
-                    internal.validate(nativeImage)
+                    livenessDetectorInternal.validate(nativeImage)
 
-                override fun extractAndValidate(nativeImage: NativeImage): Boolean? =
-                    extractor().extract(nativeImage)?.let { internal.validate(it) }
+                override fun extractAndValidate(nativeImage: NativeImage): Boolean? {
+                    val traceId = generateTraceID()
+                    return extractorInternal.extract(nativeImage, false, traceId)
+                        ?.let { livenessDetectorInternal.validate(it, traceId) }
+                }
 
                 override fun score(nativeImage: NativeImage): Double =
-                    internal.score(nativeImage)
+                    livenessDetectorInternal.score(nativeImage)
 
-                override fun extractAndScore(nativeImage: NativeImage): Double? =
-                    extractor().extract(nativeImage)?.let { internal.score(it) }
+                override fun extractAndScore(nativeImage: NativeImage): Double? {
+                    val traceId = generateTraceID()
+                    return extractorInternal.extract(nativeImage, false, traceId)
+                        ?.let { livenessDetectorInternal.score(it, traceId) }
+                }
             }
         }
 

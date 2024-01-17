@@ -1,8 +1,10 @@
 package net.iriscan.sdk.face.impl
 
+import io.github.aakira.napier.Napier
 import kotlinx.cinterop.*
 import net.iriscan.sdk.core.image.*
 import net.iriscan.sdk.core.io.DataBytes
+import net.iriscan.sdk.core.utils.generateTraceID
 import net.iriscan.sdk.core.utils.resizeImg
 import net.iriscan.sdk.face.FaceNetModelConfiguration
 import net.iriscan.sdk.tf.InterpreterImpl
@@ -26,7 +28,8 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
         faceNetModelConfig.overrideCacheOnWrongChecksum
     )
 
-    actual fun encode(image: Image): DataBytes {
+    actual fun encode(image: Image, traceId: String?): DataBytes {
+        Napier.d(tag = traceId) { "Encoding sdk image [${image.width},${image.height}]" }
         val resized = resizeImg(image, faceNetModelConfig.inputWidth, faceNetModelConfig.inputHeight)
         val pixels =
             resized.colors
@@ -42,12 +45,17 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
                     }
                 }
                 .toFloatArray()
-        return encodeInternal(pixels)
+        Napier.d(tag = traceId) { "Image pixes extracted from thee image" }
+        return encodeInternal(pixels, traceId)
     }
 
-    actual fun encode(image: NativeImage): DataBytes {
+    actual fun encode(image: NativeImage, traceId: String?): DataBytes {
+        val debugTraceId = generateTraceID()
         val newWidth = faceNetModelConfig.inputWidth
         val newHeight = faceNetModelConfig.inputHeight
+        Napier.d(tag = debugTraceId) {
+            "Encoding native image [${CGImageGetWidth(image.ptr)},${CGImageGetHeight(image.ptr)}]"
+        }
         val pixelCount = newWidth * newHeight
         val data = nativeHeap.allocArray<UByteVar>(pixelCount * 4)
         val colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -74,10 +82,11 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
         }
         CGContextRelease(context)
         nativeHeap.free(data)
-        return encodeInternal(pixels)
+        Napier.d(tag = debugTraceId) { "CGImage created" }
+        return encodeInternal(pixels, traceId)
     }
 
-    private fun encodeInternal(pixels: FloatArray): DataBytes {
+    private fun encodeInternal(pixels: FloatArray, traceId: String?): DataBytes {
         val mean = pixels.average().toFloat()
         var std = sqrt(pixels.map { pi -> (pi - mean).pow(2) }.sum() / pixels.size.toFloat())
         std = max(std, 1f / sqrt(pixels.size.toFloat()))
@@ -91,15 +100,17 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
                     .reversed()
             }
             .toByteArray()
+        Napier.d(tag = traceId) { "Encoding CGImage, resolved ${bytes.size} bytes" }
         val inputs = mapOf(0 to bytes.toNSData())
         val outputs = mutableMapOf<Int, Any>(0 to NSData())
         interpreter.invoke(inputs, outputs)
-        return (outputs[0] as NSData).toByteArray()
+        val template = (outputs[0] as NSData).toByteArray()
             .toList()
             .chunked(4)
             .flatMap { it.reversed() }
             .toByteArray()
-            .toNSData()
+        Napier.d(tag = traceId) { "Encoding done, result template size: ${template.size}" }
+        return template.toNSData()
     }
 
 }

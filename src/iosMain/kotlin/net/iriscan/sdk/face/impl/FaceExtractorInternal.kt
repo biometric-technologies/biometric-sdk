@@ -28,23 +28,29 @@ import kotlin.math.atan2
  * @author Slava Gornostal
  */
 internal actual class FaceExtractorInternal actual constructor() {
-    actual fun extract(image: Image): Image? {
+    actual fun extract(image: Image, rotateOnWrongOrientation: Boolean, traceId: String?): Image? {
         val cgImage = imageToCGImage(image)
-        val face = extractInternal(cgImage.ptr) ?: return null
+        val face = extractInternal(cgImage.ptr, rotateOnWrongOrientation, traceId) ?: return null
         return cgImageToImage(face)
     }
 
-    actual fun extract(image: NativeImage): NativeImage? = extractInternal(image.ptr)
+    actual fun extract(image: NativeImage, rotateOnWrongOrientation: Boolean, traceId: String?): NativeImage? =
+        extractInternal(image.ptr, rotateOnWrongOrientation, traceId)
 
-    private fun extractInternal(cgImage: CGImageRef): CGImage? {
+    private fun extractInternal(cgImage: CGImageRef, rotateOnWrongOrientation: Boolean, traceId: String?): CGImage? {
+        Napier.d(tag = traceId) {
+            "Extracting face from SDK image [${CGImageGetWidth(cgImage)},${
+                CGImageGetHeight(
+                    cgImage
+                )
+            }]"
+        }
         val face = throwError { errorPtr ->
             val handler = VNImageRequestHandler(cgImage, mapOf<Any?, Any?>())
             val faceRect = CompletableDeferred<VNFaceObservation?>()
             val request = VNDetectFaceLandmarksRequest { data, error ->
                 if (error != null) {
-                    Napier.e("Could not extract face from image: ${error.localizedDescription}")
-                }
-                if (error != null) {
+                    Napier.e(tag = traceId) { "Could not extract face from image: ${error.localizedDescription}" }
                     faceRect.complete(null)
                     return@VNDetectFaceLandmarksRequest
                 }
@@ -52,13 +58,17 @@ internal actual class FaceExtractorInternal actual constructor() {
             }
             handler.performRequests(listOf(request), errorPtr)
             runBlocking { faceRect.await() }
-        } ?: return null
+        }
+        if (face == null) {
+            Napier.w(tag = traceId) { "No biometrics were found on provided image" }
+            return null
+        }
         val leftEye = face.landmarks?.leftEye?.normalizedPoints?.pointed
         val rightEye = face.landmarks?.rightEye?.normalizedPoints?.pointed
         if (leftEye == null || rightEye == null) {
+            Napier.w(tag = traceId) { "Necessary eye(s) [${leftEye}, ${rightEye}] landmarks were not found" }
             return null
         }
-        val angle = atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x)
         val imageHeight = CGImageGetHeight(cgImage)
         val imageWidth = CGImageGetWidth(cgImage)
         val transform = CGAffineTransformTranslate(
@@ -80,10 +90,27 @@ internal actual class FaceExtractorInternal actual constructor() {
 
                 else -> null
             }
-        } ?: return null
-        val cropped = CGImageCreateWithImageInRect(cgImage, faceBoxNormalized)!!
-        val rotated = rotate(cropped, -angle)
-        return rotated.pointed
+        }
+        if (faceBoxNormalized == null) {
+            Napier.w(tag = traceId) { "Face normalization failed" }
+            return null
+        }
+        val faceImage = CGImageCreateWithImageInRect(cgImage, faceBoxNormalized)!!
+        val resultImg = if (rotateOnWrongOrientation) {
+            val angle = atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x)
+            Napier.d(tag = traceId) { "Rotating face to portrait position with angle: $angle" }
+            rotate(faceImage, -angle)
+        } else {
+            faceImage
+        }
+        Napier.d(tag = traceId) {
+            "Extracting face done with resulting image [${CGImageGetWidth(resultImg)},${
+                CGImageGetHeight(
+                    resultImg
+                )
+            }]"
+        }
+        return resultImg.pointed
     }
 
     private fun rotate(cgImage: CGImageRef, angle: CGFloat): CGImageRef {

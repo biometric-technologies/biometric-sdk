@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "net.iriscan"
-version = "0.5.10"
+version = "0.5.11"
 
 repositories {
     google()

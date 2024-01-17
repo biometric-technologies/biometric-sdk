@@ -28,7 +28,7 @@ internal actual class FaceExtractorInternal {
         Napier.d(tag = traceId) { "Extracting face from SDK image [${image.width},${image.height}]" }
         val bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.RGB_565)
         bitmap.setPixels(image.colors, 0, image.width, 0, 0, image.width, image.height)
-        val face = extractInternal(bitmap) ?: return null
+        val face = extractInternal(bitmap, rotateOnWrongOrientation) ?: return null
         val pixels = IntArray(face.width * face.height)
         face.getPixels(pixels, 0, face.width, 0, 0, face.width, face.height)
         return Image(
@@ -41,7 +41,7 @@ internal actual class FaceExtractorInternal {
 
     actual fun extract(image: NativeImage, rotateOnWrongOrientation: Boolean, traceId: String?): NativeImage? {
         Napier.d(tag = traceId) { "Extracting biometrics from native image [${image.width},${image.height}]" }
-        return extractInternal(image)
+        return extractInternal(image, rotateOnWrongOrientation)
     }
 
     private fun extractInternal(bitmap: Bitmap, rotateOnWrongOrientation: Boolean, traceId: String? = null): Bitmap? {

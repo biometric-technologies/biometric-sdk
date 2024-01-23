@@ -19,6 +19,6 @@ interface FaceLivenessDetection {
      * */
     fun score(nativeImage: NativeImage): Double
 
-    fun extractAndScore(nativeImage: NativeImage): Double?
+    fun extractAndScore(nativeImage: NativeImage): Double
 
 }

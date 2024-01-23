@@ -70,10 +70,11 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
                 override fun score(nativeImage: NativeImage): Double =
                     livenessDetectorInternal.score(nativeImage)
 
-                override fun extractAndScore(nativeImage: NativeImage): Double? {
+                override fun extractAndScore(nativeImage: NativeImage): Double {
                     val traceId = generateTraceID()
                     return extractorInternal.extract(nativeImage, false, traceId)
                         ?.let { livenessDetectorInternal.score(it, traceId) }
+                        ?: -1.0
                 }
             }
         }

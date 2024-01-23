@@ -28,7 +28,7 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
     )
     private val imageTensorProcessor = ImageProcessor.Builder()
         .add(ResizeOp(modelConfig.inputHeight, modelConfig.inputWidth, ResizeOp.ResizeMethod.BILINEAR))
-        .add(StandardizeOp())
+        .add(StandardizeOp(modelConfig.inputHeight, modelConfig.inputWidth))
         .build()
 
     actual fun validate(image: NativeImage, traceId: String?): Boolean {
@@ -56,7 +56,7 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
         return score
     }
 
-    class StandardizeOp : TensorOperator {
+    class StandardizeOp(private val height: Int, private val width: Int) : TensorOperator {
 
         override fun apply(p0: TensorBuffer?): TensorBuffer {
             val std = 0.5f
@@ -65,8 +65,19 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
             for (i in pixels.indices) {
                 pixels[i] = ((pixels[i] / 255f) - mean) / std
             }
+            val chwPixels = FloatArray(pixels.size)
+            val channels = 3
+            for (c in 0 until channels) {
+                for (h in 0 until height) {
+                    for (w in 0 until width) {
+                        val hwcIndex = h * width * channels + w * channels + c
+                        val chwIndex = c * height * width + h * width + w
+                        chwPixels[chwIndex] = pixels[hwcIndex]
+                    }
+                }
+            }
             val output = TensorBufferFloat.createFixedSize(p0.shape, DataType.FLOAT32)
-            output.loadArray(pixels)
+            output.loadArray(chwPixels)
             return output
         }
 

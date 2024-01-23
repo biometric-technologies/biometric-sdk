@@ -9,7 +9,6 @@ import net.iriscan.sdk.utils.toByteArray
 import net.iriscan.sdk.utils.toNSData
 import platform.CoreGraphics.*
 import platform.Foundation.NSData
-import platform.UIKit.UIColor
 
 /**
  * @author Slava Gornostal
@@ -56,22 +55,8 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
             colorSpace,
             bitmapInfo
         )
-        CGContextSetFillColorWithColor(context, UIColor.blackColor.CGColor)
-        val imageWidth = CGImageGetWidth(image.ptr)
-        val imageHeight = CGImageGetHeight(image.ptr)
-        val aspectRatio = imageWidth.toDouble() / imageHeight.toDouble()
-        val (rescaledWidth, rescaledHeight) = when (imageWidth > imageHeight) {
-            true -> newWidth.toDouble() to (newWidth / aspectRatio)
-            false -> (newHeight / aspectRatio) to newHeight.toDouble()
-        }
-        CGContextFillRect(context, CGRectMake(0.0, 0.0, rescaledWidth, rescaledHeight))
-        val rect = CGRectMake(
-            (newWidth - rescaledWidth) / 2,
-            (newHeight - rescaledHeight) / 2,
-            rescaledWidth,
-            rescaledHeight
-        )
-        CGContextDrawImage(context, rect, image.ptr)
+        CGContextSetInterpolationQuality(context, kCGInterpolationHigh)
+        CGContextDrawImage(context, CGRectMake(0.0, 0.0, newWidth.toDouble(), newHeight.toDouble()), image.ptr)
         val pixels = FloatArray(pixelCount * 3)
         val std = 0.5f
         val mean = 0.5f
@@ -83,9 +68,20 @@ internal actual class FaceLivenessDetectionInternal actual constructor(
             pixels[i + 2] = ((data[index + 2].toFloat() / 255f) - mean) / std
             i += 3
         }
+        val chwPixels = FloatArray(pixelCount * 3)
+        val channels = 3
+        for (c in 0 until channels) {
+            for (h in 0 until newHeight) {
+                for (w in 0 until newWidth) {
+                    val hwcIndex = h * newWidth * channels + w * channels + c
+                    val chwIndex = c * newHeight * newWidth + h * newWidth + w
+                    chwPixels[chwIndex] = pixels[hwcIndex]
+                }
+            }
+        }
         CGContextRelease(context)
         nativeHeap.free(data)
-        val bytes = pixels
+        val bytes = chwPixels
             .flatMap {
                 val bits = it.toRawBits()
                 listOf((bits shr 24).toByte(), (bits shr 16).toByte(), (bits shr 8).toByte(), (bits).toByte())

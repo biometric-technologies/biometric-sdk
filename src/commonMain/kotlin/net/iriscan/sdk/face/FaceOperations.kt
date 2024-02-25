@@ -8,5 +8,6 @@ interface FaceOperations {
     fun extractor(): FaceExtractor
     fun encoder(): FaceEncoder
     fun matcher(): FaceMatcher
-    fun liveness(): FaceLivenessDetection
+    fun livenessPhoto(): FaceLivenessPhotoDetection
+    fun livenessPosition(): FaceLivenessPositionDetection
 }

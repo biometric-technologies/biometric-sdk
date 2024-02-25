@@ -28,9 +28,16 @@ class FaceNetModelConfiguration(
 
 class FaceMatchProperties(val threshold: Double)
 
-class FaceLivenessDetectionProperties(val tfModel: LivenessModelConfiguration)
+class FaceLivenessDetectionProperties(
+    val photo: LivenessModelPhotoConfiguration?,
+    val position: LivenessModelPositionConfiguration?,
+)
 
-class LivenessModelConfiguration(
+class LivenessModelPositionConfiguration(
+    val threshold: Double
+)
+
+class LivenessModelPhotoConfiguration(
     val path: String,
     val inputWidth: Int,
     val inputHeight: Int,

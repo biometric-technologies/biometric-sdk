@@ -10,6 +10,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.image.NativeImage
+import net.iriscan.sdk.core.utils.Math
 import net.iriscan.sdk.utils.cgImageToImage
 import net.iriscan.sdk.utils.imageToCGImage
 import net.iriscan.sdk.utils.throwError
@@ -21,6 +22,7 @@ import platform.UIKit.UIGraphicsGetImageFromCurrentImageContext
 import platform.Vision.VNDetectFaceLandmarksRequest
 import platform.Vision.VNFaceObservation
 import platform.Vision.VNImageRequestHandler
+import kotlin.math.abs
 import kotlin.math.atan2
 
 
@@ -98,8 +100,13 @@ internal actual class FaceExtractorInternal actual constructor() {
         val faceImage = CGImageCreateWithImageInRect(cgImage, faceBoxNormalized)!!
         val resultImg = if (rotateOnWrongOrientation) {
             val angle = atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x)
-            Napier.d(tag = traceId) { "Rotating face to portrait position with angle: $angle" }
-            rotate(faceImage, -angle)
+            val degrees = Math.toDegrees(angle)
+            if (abs(degrees) > 45) {
+                Napier.d(tag = traceId) { "Rotating face to portrait position with angle: $degrees" }
+                rotate(faceImage, -angle)
+            } else {
+                faceImage
+            }
         } else {
             faceImage
         }

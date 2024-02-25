@@ -3,7 +3,7 @@ package net.iriscan.sdk.face.impl
 import io.github.aakira.napier.Napier
 import kotlinx.cinterop.*
 import net.iriscan.sdk.core.image.NativeImage
-import net.iriscan.sdk.face.LivenessModelConfiguration
+import net.iriscan.sdk.face.LivenessModelPhotoConfiguration
 import net.iriscan.sdk.tf.InterpreterImpl
 import net.iriscan.sdk.utils.toByteArray
 import net.iriscan.sdk.utils.toNSData
@@ -13,11 +13,11 @@ import platform.Foundation.NSData
 /**
  * @author Slava Gornostal
  */
-internal actual class FaceLivenessDetectionInternal actual constructor(
-    private val modelConfig: LivenessModelConfiguration
+internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
+    private val modelConfig: LivenessModelPhotoConfiguration
 ) {
     private val interpreter = InterpreterImpl(
-        "liveness.tflite",
+        "liveness-photo.tflite",
         modelConfig.path,
         modelConfig.modelChecksum,
         modelConfig.modelChecksumMethod,

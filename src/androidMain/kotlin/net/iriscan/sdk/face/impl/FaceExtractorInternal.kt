@@ -11,6 +11,7 @@ import io.github.aakira.napier.Napier
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.image.ImageColorType
 import net.iriscan.sdk.core.image.NativeImage
+import kotlin.math.abs
 import kotlin.math.atan2
 
 /**
@@ -73,10 +74,15 @@ internal actual class FaceExtractorInternal {
         val resultImg = if (rotateOnWrongOrientation) {
             val angle = atan2(rightEye.position.y - leftEye.position.y, rightEye.position.x - leftEye.position.x)
                 .toDouble()
-            Napier.d(tag = traceId) { "Rotating face to portrait position with angle: $angle" }
-            val matrix = Matrix()
-            matrix.postRotate(-Math.toDegrees(angle).toFloat())
-            Bitmap.createBitmap(faceBitmap, 0, 0, faceBitmap.width, faceBitmap.height, matrix, true)
+            val degrees = Math.toDegrees(angle)
+            if (abs(degrees) > 45) {
+                Napier.d(tag = traceId) { "Rotating face to portrait position with angle: $angle" }
+                val matrix = Matrix()
+                matrix.postRotate(-degrees.toFloat())
+                Bitmap.createBitmap(faceBitmap, 0, 0, faceBitmap.width, faceBitmap.height, matrix, true)
+            } else {
+                faceBitmap
+            }
         } else {
             faceBitmap
         }

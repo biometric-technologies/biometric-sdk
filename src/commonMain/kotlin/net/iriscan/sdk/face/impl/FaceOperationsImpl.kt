@@ -53,11 +53,11 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
             }
         }
 
-    private val liveness: FaceLivenessDetection? =
-        config.liveness?.let {
-            val livenessDetectorInternal = FaceLivenessDetectionInternal(it.tfModel)
+    private val livenessPhoto: FaceLivenessPhotoDetection? =
+        config.liveness?.photo?.let {
+            val livenessDetectorInternal = FaceLivenessPhotoDetectionInternal(it)
             val extractorInternal = FaceExtractorInternal()
-            object : FaceLivenessDetection {
+            object : FaceLivenessPhotoDetection {
                 override fun validate(nativeImage: NativeImage): Boolean =
                     livenessDetectorInternal.validate(nativeImage)
 
@@ -79,6 +79,15 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
             }
         }
 
+    private val livenessPosition: FaceLivenessPositionDetection? =
+        config.liveness?.position?.let {
+            val internal = FaceLivenessPositionDetectionInternal(it)
+            object : FaceLivenessPositionDetection {
+                override fun detectPosition(nativeImage: NativeImage): Int =
+                    internal.detectPosition(nativeImage)
+            }
+        }
+
     override fun extractor(): FaceExtractor =
         extractor ?: throw IllegalStateException("Please initialize SDK with face extractor")
 
@@ -88,6 +97,9 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
     override fun matcher(): FaceMatcher =
         matcher ?: throw IllegalStateException("Please initialize SDK with face matcher")
 
-    override fun liveness(): FaceLivenessDetection =
-        liveness ?: throw IllegalStateException("Please initialize SDK with face liveness")
+    override fun livenessPhoto(): FaceLivenessPhotoDetection =
+        livenessPhoto ?: throw IllegalStateException("Please initialize SDK with face photo liveness")
+
+    override fun livenessPosition(): FaceLivenessPositionDetection =
+        livenessPosition ?: throw IllegalStateException("Please initialize SDK with face position liveness")
 }

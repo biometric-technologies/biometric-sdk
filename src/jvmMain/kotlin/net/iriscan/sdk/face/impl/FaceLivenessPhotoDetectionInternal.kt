@@ -1,7 +1,7 @@
 package net.iriscan.sdk.face.impl
 
 import net.iriscan.sdk.core.image.NativeImage
-import net.iriscan.sdk.face.LivenessModelConfiguration
+import net.iriscan.sdk.face.LivenessModelPhotoConfiguration
 import net.iriscan.sdk.tf.InterpreterImpl
 import java.awt.Color
 import java.awt.image.BufferedImage
@@ -9,12 +9,12 @@ import java.awt.image.BufferedImage
 /**
  * @author Slava Gornostal
  */
-internal actual class FaceLivenessDetectionInternal actual constructor(
-    private val modelConfig: LivenessModelConfiguration
+internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
+    private val modelConfig: LivenessModelPhotoConfiguration
 ) {
 
     private val interpreter = InterpreterImpl(
-        "liveness.tflite",
+        "liveness-photo.tflite",
         modelConfig.path,
         modelConfig.modelChecksum,
         modelConfig.modelChecksumMethod,

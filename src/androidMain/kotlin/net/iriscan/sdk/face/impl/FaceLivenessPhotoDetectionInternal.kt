@@ -3,7 +3,7 @@ package net.iriscan.sdk.face.impl
 import com.soywiz.kmem.length
 import io.github.aakira.napier.Napier
 import net.iriscan.sdk.core.image.NativeImage
-import net.iriscan.sdk.face.LivenessModelConfiguration
+import net.iriscan.sdk.face.LivenessModelPhotoConfiguration
 import net.iriscan.sdk.tf.InterpreterImpl
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.common.TensorOperator
@@ -16,11 +16,11 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBufferFloat
 /**
  * @author Slava Gornostal
  */
-internal actual class FaceLivenessDetectionInternal actual constructor(
-    private val modelConfig: LivenessModelConfiguration
+internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
+    private val modelConfig: LivenessModelPhotoConfiguration
 ) {
     private val interpreter = InterpreterImpl(
-        "liveness.tflite",
+        "liveness-photo.tflite",
         modelConfig.path,
         modelConfig.modelChecksum,
         modelConfig.modelChecksumMethod,

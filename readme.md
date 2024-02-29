@@ -1,5 +1,5 @@
 # About
-Biometric SDK is complete open-source solutions for different modals.
+Biometric SDK is complete open-source solutions for face, iris and fingerprint modalities.
 
 ![Workflow name](https://github.com/biometric-technologies/biometric-sdk/actions/workflows/release.yml/badge.svg)
 [![Maven Central](https://img.shields.io/maven-central/v/net.iriscan/biometric-sdk.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22net.iriscan%22%20AND%20a:%22biometric-sdk%22)
@@ -10,7 +10,7 @@ Biometric SDK is complete open-source solutions for different modals.
 
 # Structure
 
-NOTE: Some modules are still unavailable.
+NOTE: Some modules are still under development.
 
 * `io` – defines functionality for working with images and biometric files.
 * `iris` – provides functionality for working with IRIS biometrics.

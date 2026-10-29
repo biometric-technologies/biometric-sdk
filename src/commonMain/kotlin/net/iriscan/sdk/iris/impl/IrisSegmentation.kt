@@ -64,6 +64,12 @@ private fun ring(ranges: List<ClosedRange<Double>>, stepDeg: Double, sectorsPerR
 /** Pupil boundary must be present in at least ~5 of 8 sectors (tolerates eyelids and glints). */
 private const val PUPIL_SECTOR_QUANTILE = 0.375
 
+/** Limbus edge strength: the weaker of the left and right halves (4 sectors). */
+private const val LIMBUS_SECTOR_QUANTILE = 0.34
+
+/** The limbus is the first strong edge outside the pupil; eyelids and eye corners lie further out. */
+private const val LIMBUS_PREFER_INNER = 0.9
+
 private val FULL_RING = ring(listOf(0.0..354.375), 5.625, 8) // 64 samples, 8 sectors
 
 /** Mean intensity on a circle, or NaN when fewer than half of the samples are inside the image. */
@@ -109,22 +115,29 @@ private class EdgeHit(val r: Double, val strength: Double)
 private fun strongestEdge(
     img: GrayImage, cx: Double, cy: Double, rMin: Double, rMax: Double, rStep: Double, ring: Ring,
     sectorQuantile: Double? = null,
+    preferInner: Double? = null,
+    minSectorFraction: Double = 0.5,
+    radialScale: Int = 1,
 ): EdgeHit? {
     if (rMax - rMin < 3 * rStep) return null
-    val n = ((rMax - rMin) / rStep).toInt() + 3
+    val profile = ArrayList<EdgeHit>()
+    val k0 = radialScale
+    val n = ((rMax - rMin) / rStep).toInt() + 1 + 2 * k0
     val sk = ring.sectors
     val m = Array(n) { DoubleArray(sk) }
-    for (i in 0 until n) sectorMeans(img, cx, cy, rMin + (i - 1) * rStep, ring, m[i])
+    for (i in 0 until n) sectorMeans(img, cx, cy, rMin + (i - k0) * rStep, ring, m[i])
     // per-sector derivative
     val d = Array(n) { DoubleArray(sk) { Double.NaN } }
-    for (i in 1 until n - 1) for (k in 0 until sk) {
-        val a = m[i - 1][k]
-        val b = m[i + 1][k]
-        if (!a.isNaN() && !b.isNaN()) d[i][k] = (b - a) / (2 * rStep)
+    // derivative over +-k0 samples: a small scale finds sharp edges (pupil), a larger
+    // one measures the total step of a blurred edge (limbus) rather than iris texture
+    for (i in k0 until n - k0) for (k in 0 until sk) {
+        val a = m[i - k0][k]
+        val b = m[i + k0][k]
+        if (!a.isNaN() && !b.isNaN()) d[i][k] = (b - a) / (2 * k0 * rStep)
     }
     var best: EdgeHit? = null
     val buf = DoubleArray(sk)
-    for (i in 2 until n - 2) {
+    for (i in k0 + 1 until n - k0 - 1) {
         var cnt = 0
         for (k in 0 until sk) {
             val a = d[i - 1][k]
@@ -133,7 +146,7 @@ private fun strongestEdge(
             if (a.isNaN() || b.isNaN() || c.isNaN()) continue
             buf[cnt++] = (a + 2 * b + c) / 4 // [1 2 1] smoothing along the radius
         }
-        if (cnt * 2 < sk) continue
+        if (cnt < sk * minSectorFraction) continue
         val v = if (sectorQuantile == null) {
             var s = 0.0
             for (k in 0 until cnt) s += buf[k]
@@ -143,9 +156,49 @@ private fun strongestEdge(
             sorted.sort()
             sorted[((cnt - 1) * sectorQuantile).toInt()]
         }
-        if (best == null || v > best.strength) best = EdgeHit(rMin + (i - 1) * rStep, v)
+        val hit = EdgeHit(rMin + (i - k0) * rStep, v)
+        profile += hit
+        if (best == null || v > best.strength) best = hit
     }
-    return best?.takeIf { it.strength > 0 }
+    val top = best?.takeIf { it.strength > 0 } ?: return null
+    if (preferInner == null) return top
+    // the innermost local maximum that is nearly as strong as the strongest edge
+    for (k in 1 until profile.size - 1) {
+        val h = profile[k]
+        if (h.strength >= preferInner * top.strength &&
+            h.strength >= profile[k - 1].strength && h.strength >= profile[k + 1].strength) return h
+    }
+    return top
+}
+
+/**
+ * A ring of illuminator glints inside the pupil can produce a circular edge
+ * smaller than the pupil. If a larger concentric edge exists and the ring
+ * between the two is as dark as the pupil, the larger circle is the pupil.
+ */
+private fun expandPupil(img: GrayImage, found: PupilHit, rpMax: Double): PupilHit {
+    var current = found
+    repeat(2) {
+        val c = current.c
+        val inner = discMean(img, c.x, c.y, c.r)
+        var best: PupilHit? = null
+        for (dy in -3..3) for (dx in -3..3) {
+            val cx = c.x + dx
+            val cy = c.y + dy
+            val e = strongestEdge(img, cx, cy, c.r * 1.15, min(rpMax, c.r * 2.2), 1.0, FULL_RING, PUPIL_SECTOR_QUANTILE) ?: continue
+            if (e.strength < 0.5 * current.edge) continue
+            // the annulus between the two circles must look like pupil, not iris
+            // glints sit somewhere between the two circles: use the darkest intermediate ring
+            val ring = listOf(0.3, 0.5, 0.7, 0.85).map { circleMean(img, cx, cy, c.r + (e.r - c.r) * it, FULL_RING) }
+                .filter { !it.isNaN() }.minOrNull() ?: continue
+            val outside = circleMean(img, cx, cy, e.r + 4, FULL_RING)
+            if (outside.isNaN()) continue
+            if (ring - inner > 0.5 * (outside - inner)) continue
+            if (best == null || e.strength > best.edge) best = PupilHit(IrisCircle(cx, cy, e.r), e.strength, e.strength)
+        }
+        current = best ?: return current
+    }
+    return current
 }
 
 /** Mean intensity of a disc, approximated by three concentric circles. */
@@ -175,7 +228,7 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
     val minSideFull = min(full.width, full.height).toDouble()
     val scale = min(1.0, props.workingSize / minSideFull)
     val small = downscale(full, scale)
-    val refl = reflectionMask(small, dilate = 2)
+    val refl = reflectionMask(small, dilate = 3)
     val clean = inpaint(small, refl)
     val img = gaussianBlur(clean, 1.2)
     val minSide = min(img.width, img.height).toDouble()
@@ -211,33 +264,47 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
         val hit = pupilAt(img, cx, cy, max(rpMin, pupil.c.r - 4), min(rpMax, pupil.c.r + 4), 0.5) ?: continue
         if (hit.score > pupil.score) pupil = hit
     }
+    pupil = expandPupil(img, pupil, rpMax)
     val p = pupil.c
 
-    // 4. limbus: lateral sectors, center searched near the pupil center
+    // 4. limbus, in two stages: first the innermost strong edge around the pupil
+    //    center, then the center and radius refined near it. Searching all centers
+    //    at once lets eyelid and eye-corner edges win.
+    // both sides must show the limbus: corners of the eye and eyelid edges usually appear on one side only
     val irisRing = ring(props.irisAnglesToSearch.toList(), 2.5, 2)
     val riMin = max(riMinAbs, p.r / props.maxPupilIrisRatio)
     val riMax = min(riMaxAbs, p.r / props.minPupilIrisRatio)
     if (riMax - riMin < 4) return null
-    val off = max(3, (0.35 * p.r).toInt())
     var bestIris: EdgeHit? = null
     var bestCenter = p.x to p.y
-    for (dy in -off..off) for (dx in -off..off) {
-        val cx = p.x + dx
-        val cy = p.y + dy
-        val d = hypot(dx.toDouble(), dy.toDouble())
-        val lo = max(riMin, p.r + d + 3)
-        val hit = strongestEdge(img, cx, cy, lo, riMax, 1.0, irisRing) ?: continue
-        if (bestIris == null || hit.strength > bestIris.strength) {
-            bestIris = hit; bestCenter = cx to cy
+    var quantile = LIMBUS_SECTOR_QUANTILE
+    // if eyelids hide two of the four lateral sectors, accept the edge seen in the other two
+    for (q in listOf(LIMBUS_SECTOR_QUANTILE, 0.67)) {
+        for (dy in -2..2) for (dx in -2..2) {
+            val cx = p.x + dx
+            val cy = p.y + dy
+            val lo = max(riMin, p.r + hypot(dx.toDouble(), dy.toDouble()) + 3)
+            val hit = strongestEdge(img, cx, cy, lo, riMax, 1.0, irisRing, q, LIMBUS_PREFER_INNER, 0.75, 6) ?: continue
+            if (bestIris == null || hit.r < bestIris.r - 2 || (kotlin.math.abs(hit.r - bestIris.r) <= 2 && hit.strength > bestIris.strength)) {
+                bestIris = hit; bestCenter = cx to cy
+            }
+        }
+        if (bestIris != null) {
+            quantile = q; break
         }
     }
     var iris = bestIris ?: return null
-    for (dy in -2..2) for (dx in -2..2) {
-        val cx = bestCenter.first + dx * 0.5
-        val cy = bestCenter.second + dy * 0.5
-        val d = hypot(cx - p.x, cy - p.y)
-        val lo = max(max(riMin, iris.r - 3), p.r + d + 3)
-        val hit = strongestEdge(img, cx, cy, lo, min(riMax, iris.r + 3), 0.5, irisRing) ?: continue
+    // lateral arcs fix the horizontal position well but the vertical one only weakly,
+    // so the vertical search range is kept small
+    val off = max(2, (0.12 * iris.r).toInt())
+    val offY = max(2, (0.04 * iris.r).toInt())
+    val r0 = iris.r
+    for (dy in -offY..offY) for (dx in -off..off) {
+        val cx = p.x + dx
+        val cy = p.y + dy
+        val d = hypot(dx.toDouble(), dy.toDouble())
+        val lo = max(max(riMin, r0 * 0.9), p.r + d + 3)
+        val hit = strongestEdge(img, cx, cy, lo, min(riMax, r0 * 1.1), 0.5, irisRing, quantile, null, 0.75, 3) ?: continue
         if (hit.strength > iris.strength) {
             iris = hit; bestCenter = cx to cy
         }

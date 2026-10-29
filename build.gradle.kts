@@ -70,10 +70,9 @@ kotlin {
     }
 
     sourceSets {
+        // Opt-ins must be the same in a source set and the ones depending on it
         all {
             languageSettings.optIn("kotlin.ExperimentalUnsignedTypes")
-        }
-        iosMain {
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
             languageSettings.optIn("kotlinx.cinterop.BetaInteropApi")
         }

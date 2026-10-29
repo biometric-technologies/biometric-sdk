@@ -13,12 +13,12 @@ jobs:
       version-changed: ${{ steps.check.outputs.version-changed }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0  # Fetch all history and tags
 
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -57,10 +57,10 @@ jobs:
       SIGN_JAR_AND_AAR: true
     steps:
       - name: Check Out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -110,13 +110,13 @@ jobs:
     if: needs.check-version.outputs.version-changed == 'true'
     steps:
       - name: Check Out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Get project version
         run: echo "PROJECT_VERSION=${{ needs.check-version.outputs.project-version }}" >> $GITHUB_ENV
 
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -144,7 +144,7 @@ jobs:
         run: ./gradlew clean podPublishReleaseXCFramework
 
       - name: Checkout cocoapods sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ssh-key: ${{ secrets.COCOAPODS_GIT_DEPLOY_KEY }}
           path: biometric-sdk-cocoapods-release

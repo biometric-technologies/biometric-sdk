@@ -29,9 +29,9 @@ internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
 
     actual fun score(image: NativeImage, traceId: String?): Double {
         Napier.d(tag = traceId) {
-            "Validate face liveness on native image [${CGImageGetWidth(image.ptr)},${
+            "Validate face liveness on native image [${CGImageGetWidth(image.cgImage)},${
                 CGImageGetHeight(
-                    image.ptr
+                    image.cgImage
                 )
             }]"
         }
@@ -56,7 +56,7 @@ internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
             bitmapInfo
         )
         CGContextSetInterpolationQuality(context, kCGInterpolationHigh)
-        CGContextDrawImage(context, CGRectMake(0.0, 0.0, newWidth.toDouble(), newHeight.toDouble()), image.ptr)
+        CGContextDrawImage(context, CGRectMake(0.0, 0.0, newWidth.toDouble(), newHeight.toDouble()), image.cgImage)
         val pixels = FloatArray(pixelCount * 3)
         val std = 0.5f
         val mean = 0.5f

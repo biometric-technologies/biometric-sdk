@@ -1,6 +1,5 @@
 package net.iriscan.sdk.utils
 
-import cnames.structs.CGImage
 import kotlinx.cinterop.*
 import net.iriscan.sdk.core.image.*
 import platform.CoreGraphics.*
@@ -8,7 +7,7 @@ import platform.CoreGraphics.*
 /**
  * @author Slava Gornostal
  */
-internal fun imageToCGImage(image: Image): CGImage {
+internal fun imageToCGImage(image: Image): CGImageRef {
     val width = image.width.toULong()
     val height = image.height.toULong()
     val pixelCount = width * height
@@ -24,18 +23,18 @@ internal fun imageToCGImage(image: Image): CGImage {
     val cgImage = CGBitmapContextCreateImage(context)
     CGContextRelease(context)
     nativeHeap.free(data)
-    return cgImage!!.pointed
+    return cgImage!!
 }
 
-internal fun cgImageToImage(image: CGImage): Image {
-    val width = CGImageGetWidth(image.ptr)
-    val height = CGImageGetHeight(image.ptr)
+internal fun cgImageToImage(image: CGImageRef): Image {
+    val width = CGImageGetWidth(image)
+    val height = CGImageGetHeight(image)
     val pixelCount = width * height
     val data = nativeHeap.allocArray<UIntVar>(pixelCount.toInt())
     val colorSpace = CGColorSpaceCreateDeviceRGB()
     val bitmapInfo = CGImageAlphaInfo.kCGImageAlphaNoneSkipFirst.value or kCGBitmapByteOrder32Big
     val context = CGBitmapContextCreate(data, width, height, 8u, width * 4u, colorSpace, bitmapInfo)
-    CGContextDrawImage(context, CGRectMake(0.0, 0.0, width.toDouble(), height.toDouble()), image.ptr)
+    CGContextDrawImage(context, CGRectMake(0.0, 0.0, width.toDouble(), height.toDouble()), image)
     val pixels = IntArray(pixelCount.toInt())
     for (i in pixels.indices) {
         val rgba = data[i]

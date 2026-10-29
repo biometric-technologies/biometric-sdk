@@ -1,6 +1,5 @@
 package net.iriscan.sdk.face.impl
 
-import cnames.structs.CGImage
 import io.github.aakira.napier.Napier
 import kotlinx.cinterop.pointed
 import kotlinx.cinterop.ptr
@@ -32,14 +31,14 @@ import kotlin.math.atan2
 internal actual class FaceExtractorInternal actual constructor() {
     actual fun extract(image: Image, rotateOnWrongOrientation: Boolean, traceId: String?): Image? {
         val cgImage = imageToCGImage(image)
-        val face = extractInternal(cgImage.ptr, rotateOnWrongOrientation, traceId) ?: return null
+        val face = extractInternal(cgImage, rotateOnWrongOrientation, traceId) ?: return null
         return cgImageToImage(face)
     }
 
     actual fun extract(image: NativeImage, rotateOnWrongOrientation: Boolean, traceId: String?): NativeImage? =
-        extractInternal(image.ptr, rotateOnWrongOrientation, traceId)
+        extractInternal(image.cgImage, rotateOnWrongOrientation, traceId)?.let { NativeImage(it) }
 
-    private fun extractInternal(cgImage: CGImageRef, rotateOnWrongOrientation: Boolean, traceId: String?): CGImage? {
+    private fun extractInternal(cgImage: CGImageRef, rotateOnWrongOrientation: Boolean, traceId: String?): CGImageRef? {
         Napier.d(tag = traceId) {
             "Extracting face from SDK image [${CGImageGetWidth(cgImage)},${
                 CGImageGetHeight(
@@ -117,7 +116,7 @@ internal actual class FaceExtractorInternal actual constructor() {
                 )
             }]"
         }
-        return resultImg.pointed
+        return resultImg
     }
 
     private fun rotate(cgImage: CGImageRef, angle: CGFloat): CGImageRef {

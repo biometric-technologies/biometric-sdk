@@ -18,7 +18,7 @@ import platform.Vision.VNImageRequestHandler
 internal actual class FaceLivenessPositionDetectionInternal actual
 constructor(private val modelConfig: LivenessModelPositionConfiguration) {
     actual fun detectPosition(image: NativeImage, traceId: String?): Int =
-        detectInternal(image.ptr, traceId)
+        detectInternal(image.cgImage, traceId)
 
     private fun detectInternal(cgImage: CGImageRef, traceId: String?): Int {
         Napier.d(tag = traceId) {

@@ -1,6 +1,8 @@
 package net.iriscan.sdk.io.image.serializers
 
-import com.soywiz.korio.stream.*
+import net.iriscan.sdk.core.io.MemoryStream
+import net.iriscan.sdk.core.io.buildBytes
+
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.image.ImageColorType
 import net.iriscan.sdk.io.exception.IOException
@@ -16,10 +18,10 @@ internal object BMP : ImageSerializer {
         get() = ImageFormat.BMP
 
     override fun canRead(data: ByteArray): Boolean =
-        data.size > 4 && MemorySyncStream(data).readStringz(2) == "BM"
+        data.size > 4 && MemoryStream(data).readStringz(2) == "BM"
 
     override fun read(data: ByteArray): Image {
-        val stream = MemorySyncStream(data)
+        val stream = MemoryStream(data)
         if (stream.availableRead < 54) {
             throw IOException("Unexpected EOF")
         }
@@ -48,7 +50,7 @@ internal object BMP : ImageSerializer {
         return Image(width, height, ImageColorType.RGB, colors)
     }
 
-    private fun readColors(stream: SyncStream, bitsPerPixel: Int, width: Int, height: Int): IntArray {
+    private fun readColors(stream: MemoryStream, bitsPerPixel: Int, width: Int, height: Int): IntArray {
         val skip = when (val padding = 4 - (width * 24 / 8 % 4)) {
             4 -> 0
             else -> padding
@@ -69,7 +71,7 @@ internal object BMP : ImageSerializer {
         return result
     }
 
-    override fun write(image: Image): ByteArray = MemorySyncStreamToByteArray {
+    override fun write(image: Image): ByteArray = buildBytes {
         write8('B'.code)
         write8('M'.code)
         val imageSize = image.size * 24 / 8

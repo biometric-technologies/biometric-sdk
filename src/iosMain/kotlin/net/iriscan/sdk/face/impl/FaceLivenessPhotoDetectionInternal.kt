@@ -29,9 +29,9 @@ internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
 
     actual fun score(image: NativeImage, traceId: String?): Double {
         Napier.d(tag = traceId) {
-            "Validate face liveness on native image [${CGImageGetWidth(image.ptr)},${
+            "Validate face liveness on native image [${CGImageGetWidth(image.cgImage)},${
                 CGImageGetHeight(
-                    image.ptr
+                    image.cgImage
                 )
             }]"
         }
@@ -56,7 +56,7 @@ internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
             bitmapInfo
         )
         CGContextSetInterpolationQuality(context, kCGInterpolationHigh)
-        CGContextDrawImage(context, CGRectMake(0.0, 0.0, newWidth.toDouble(), newHeight.toDouble()), image.ptr)
+        CGContextDrawImage(context, CGRectMake(0.0, 0.0, newWidth.toDouble(), newHeight.toDouble()), image.cgImage)
         val pixels = FloatArray(pixelCount * 3)
         val std = 0.5f
         val mean = 0.5f
@@ -92,7 +92,8 @@ internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
         val inputs = mapOf(0 to bytes.toNSData())
         val outputs = mutableMapOf<Int, Any>(0 to NSData(), 1 to NSData())
         interpreter.invoke(inputs, outputs)
-        val result = (outputs[1] as NSData).toByteArray()
+        // output 0 is the 14 x 14 live-probability map; its mean is the score on every platform
+        val result = (outputs[0] as NSData).toByteArray()
             .toList()
             .chunked(4)
             .map {
@@ -101,7 +102,7 @@ internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
                 }
                 Float.fromBits(bits)
             }
-        val score = result.first().toDouble()
+        val score = result.average()
         Napier.d(tag = traceId) { "Resolved liveness score: $score" }
         return score
     }

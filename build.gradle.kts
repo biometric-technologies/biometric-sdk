@@ -1,14 +1,16 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
-    kotlin("multiplatform") version "1.8.20"
-    kotlin("native.cocoapods") version "1.8.20"
-    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
+    kotlin("multiplatform") version "2.2.20"
+    kotlin("native.cocoapods") version "2.2.20"
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
     id("maven-publish")
     id("com.android.library")
     id("convention.publication")
 }
 
 group = "net.iriscan"
-version = "0.6.0"
+version = "0.7.0"
 
 repositories {
     google()
@@ -17,9 +19,11 @@ repositories {
 
 nexusPublishing {
     repositories {
+        // Maven Central Portal, OSSRH-compatible staging API (legacy OSSRH was shut down in June 2025).
+        // OSSRH_USERNAME / OSSRH_PASSWORD must hold a Central Portal user token.
         sonatype {
-            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
             username.set(System.getenv("OSSRH_USERNAME") ?: "")
             password.set(System.getenv("OSSRH_PASSWORD") ?: "")
         }
@@ -27,19 +31,25 @@ nexusPublishing {
 }
 
 kotlin {
-    android {
+    androidTarget {
         publishLibraryVariants("debug", "release")
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
     }
     jvm {
-        compilations.all {
-            kotlinOptions.jvmTarget = "11"
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
         }
     }
 
-    ios()
     iosArm64()
     iosX64()
     iosSimulatorArm64()
+
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
 
     cocoapods {
         name = "BiometricSdk"
@@ -51,7 +61,7 @@ kotlin {
             "{ :git => 'https://github.com/biometric-technologies/biometric-sdk-cocoapods-release.git', :tag => '${project.version}' }"
         authors = "Slava Gornostal"
 
-        ios.deploymentTarget = "11.0"
+        ios.deploymentTarget = "13.0"
         framework {
             baseName = "BiometricSdk"
             isStatic = true
@@ -60,73 +70,61 @@ kotlin {
     }
 
     sourceSets {
-        val commonMain by getting {
+        // Opt-ins must be the same in a source set and the ones depending on it
+        all {
+            languageSettings.optIn("kotlin.ExperimentalUnsignedTypes")
+            languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
+            languageSettings.optIn("kotlinx.cinterop.BetaInteropApi")
+        }
+        commonMain {
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-io:0.1.16")
-                implementation("org.jetbrains.kotlinx:multik-core:0.2.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-                implementation("com.soywiz.korlibs.korio:korio:2.4.11")
-                implementation("io.github.aakira:napier:2.6.1")
-                implementation("io.ktor:ktor-client-core:2.3.3")
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+                implementation("io.github.aakira:napier:2.7.1")
+                implementation("io.ktor:ktor-client-core:3.2.3")
             }
         }
-        val jvmMain by getting {
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+        jvmMain {
             dependencies {
                 implementation("org.bytedeco:tensorflow-lite:2.10.0-1.5.8")
                 implementation("org.bytedeco:tensorflow-lite-platform:2.10.0-1.5.8")
                 implementation("org.bytedeco:opencv:4.6.0-1.5.8")
                 implementation("org.bytedeco:opencv-platform:4.6.0-1.5.8")
-                implementation("io.ktor:ktor-client-okhttp:2.3.3")
+                implementation("io.ktor:ktor-client-okhttp:3.2.3")
             }
         }
-        val androidMain by getting {
+        androidMain {
             dependencies {
                 implementation("org.tensorflow:tensorflow-lite:2.12.0")
                 implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
                 implementation("com.google.mlkit:face-detection:16.1.5")
-                implementation("io.ktor:ktor-client-okhttp:2.3.3")
+                implementation("io.ktor:ktor-client-okhttp:3.2.3")
             }
         }
-        val iosArm64Main by getting
-        val iosX64Main by getting
-        val iosSimulatorArm64Main by getting
-
-        val iosMain by getting {
-            dependsOn(commonMain)
+        iosMain {
             dependencies {
-                implementation("io.ktor:ktor-client-darwin:2.3.3")
+                implementation("io.ktor:ktor-client-darwin:3.2.3")
             }
-            iosArm64Main.dependsOn(this)
-            iosX64Main.dependsOn(this)
-            iosSimulatorArm64Main.dependsOn(this)
         }
     }
 }
 
 android {
+    namespace = "net.iriscan.sdk"
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    compileSdk = 33
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 23
-        targetSdk = 33
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-    dependencies {
-    }
-}
-dependencies {
-    implementation("io.ktor:ktor-client-cio-jvm:2.3.3")
-    implementation("io.ktor:ktor-client-okhttp-jvm:2.3.3")
-}
-
-kotlin.targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
-    binaries.all {
-        freeCompilerArgs += "-Xdisable-phases=EscapeAnalysis"
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 }
 

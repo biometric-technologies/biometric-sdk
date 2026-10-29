@@ -38,7 +38,8 @@ jobs:
 
       - name: Report build errors
         if: failure()
-        run: grep -E "^e: |error:|What went wrong|FAILED|Could not |Exception" build.log | head -40 | sed 's/^/::error::/' || true
+        run: |
+          grep -E "^e: |error:|What went wrong|FAILED|Could not |Exception" build.log | head -40 | sed 's/^/::error::/' || true
 
   jvm-android:
     runs-on: ubuntu-latest
@@ -62,4 +63,5 @@ jobs:
 
       - name: Report build errors
         if: failure()
-        run: grep -E "^e: |error:|What went wrong|FAILED|Could not |Exception" build.log | head -40 | sed 's/^/::error::/' || true
+        run: |
+          grep -E "^e: |error:|What went wrong|FAILED|Could not |Exception" build.log | head -40 | sed 's/^/::error::/' || true

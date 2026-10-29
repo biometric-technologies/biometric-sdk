@@ -40,3 +40,21 @@ jobs:
 
       - name: Build project
         run: ./gradlew clean build podPublishDebugXCFramework
+
+  jvm-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Make gradlew executable again
+        run: chmod +x ./gradlew
+
+      - name: JVM tests and Android compilation
+        run: ./gradlew jvmTest compileDebugKotlinAndroid --stacktrace

@@ -8,6 +8,7 @@ import net.iriscan.sdk.core.io.asDataBytes
 import net.iriscan.sdk.core.record.BiometricRecord
 import net.iriscan.sdk.iris.IrisEncoder
 import net.iriscan.sdk.iris.IrisExtractor
+import net.iriscan.sdk.iris.IrisMatch
 import net.iriscan.sdk.iris.IrisMatcher
 import net.iriscan.sdk.iris.IrisOperations
 
@@ -31,12 +32,16 @@ internal class IrisOperationsImpl(private val config: IrisConfig) : IrisOperatio
         }
 
         override fun extractAndEncode(sample: Image): DataBytes? {
-            val texture = extractInternal(sample, config.extractor) ?: return null
-            return encodeInternal(texture, config.encoder).asDataBytes()
+            val normalized = extractNormalized(sample, config.extractor) ?: return null
+            return encodeNormalized(normalized, config.encoder).toBytes().asDataBytes()
         }
 
-        override fun encode(sample: Image): DataBytes = encodeInternal(sample, config.encoder)
-            .asDataBytes()
+        override fun encode(sample: Image): DataBytes {
+            val normalized = NormalizedIris.fromImage(
+                sample, config.extractor.normalizedHeight, config.extractor.normalizedWidth
+            )
+            return encodeNormalized(normalized, config.encoder).toBytes().asDataBytes()
+        }
 
         override fun extractAndEncode(sample: BiometricRecord): DataBytes {
             TODO("Not implemented yet")
@@ -49,15 +54,23 @@ internal class IrisOperationsImpl(private val config: IrisConfig) : IrisOperatio
         }
 
         override fun matches(sample1: DataBytes, sample2: DataBytes): Boolean =
-            matchInternal(sample1.asByteArray(), sample2.asByteArray()) >= config.matcher.threshold
+            matches(sample1.asByteArray(), sample2.asByteArray(), config.matcher)
 
         override fun matchesAny(sample1: BiometricRecord, samples: List<BiometricRecord>): Boolean {
             TODO("Not implemented yet")
         }
 
         override fun matchesAny(sample1: DataBytes, samples: List<DataBytes>): Boolean =
-            samples.any {
-                matchInternal(sample1.asByteArray(), it.asByteArray()) >= config.matcher.threshold
-            }
+            identify(sample1, samples) != null
+
+        override fun score(sample1: DataBytes, sample2: DataBytes): Double =
+            matchScore(sample1.asByteArray(), sample2.asByteArray(), config.matcher)
+
+        override fun identify(sample: DataBytes, samples: List<DataBytes>): IrisMatch? {
+            val probe = sample.asByteArray()
+            val (index, score) = identify(probe, samples.map { it.asByteArray() }, config.matcher) ?: return null
+            val threshold = if (IrisTemplate.isV2(probe)) config.matcher.threshold else config.matcher.legacyThreshold
+            return if (score >= threshold) IrisMatch(index, score) else null
+        }
     }
 }

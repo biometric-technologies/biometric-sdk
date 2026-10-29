@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "net.iriscan"
-version = "0.6.0"
+version = "0.7.0"
 
 repositories {
     google()
@@ -69,6 +69,11 @@ kotlin {
                 implementation("com.soywiz.korlibs.korio:korio:2.4.11")
                 implementation("io.github.aakira:napier:2.6.1")
                 implementation("io.ktor:ktor-client-core:2.3.3")
+            }
+        }
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
             }
         }
         val jvmMain by getting {

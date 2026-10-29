@@ -15,7 +15,9 @@ import java.io.FileNotFoundException
 /**
  * @author Slava Gornostal
  */
-internal actual class ResourceIOImpl actual constructor(private val context: PlatformContext) : ResourceIO {
+internal actual fun createResourceIO(context: PlatformContext): ResourceIO = ResourceIOImpl(context)
+
+internal class ResourceIOImpl(private val context: PlatformContext) : ResourceIO {
 
     private val client = HttpClient(OkHttp) {
         engine {

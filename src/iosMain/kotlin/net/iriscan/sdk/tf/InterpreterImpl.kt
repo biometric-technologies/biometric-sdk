@@ -11,7 +11,7 @@ import net.iriscan.sdk.utils.NSErrorException
 import net.iriscan.sdk.utils.throwError
 import platform.Foundation.NSProcessInfo
 
-actual class InterpreterImpl actual constructor(
+internal class InterpreterImpl(
     modelName: String,
     modelPath: String,
     modelChecksum: String?,

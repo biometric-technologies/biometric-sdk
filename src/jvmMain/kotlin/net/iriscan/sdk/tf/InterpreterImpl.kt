@@ -12,7 +12,7 @@ import java.nio.ByteBuffer
 /**
  * @author Slava Gornostal
  */
-actual class InterpreterImpl actual constructor(
+internal class InterpreterImpl(
     modelName: String,
     modelPath: String,
     modelChecksum: String?,

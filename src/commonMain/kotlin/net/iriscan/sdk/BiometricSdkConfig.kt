@@ -8,6 +8,8 @@ import net.iriscan.sdk.face.FaceMatchProperties
 import net.iriscan.sdk.iris.IrisEncodeProperties
 import net.iriscan.sdk.iris.IrisExtractProperties
 import net.iriscan.sdk.iris.IrisMatchProperties
+import net.iriscan.sdk.iris.IrisQualityProperties
+import kotlin.jvm.JvmOverloads
 
 /**
  * @author Slava Gornostal
@@ -16,10 +18,11 @@ import net.iriscan.sdk.iris.IrisMatchProperties
  */
 class BiometricSdkConfig(val context: PlatformContext?, val iris: IrisConfig?, val face: FaceConfig?)
 
-data class IrisConfig(
+data class IrisConfig @JvmOverloads constructor(
     val extractor: IrisExtractProperties,
     val encoder: IrisEncodeProperties,
     val matcher: IrisMatchProperties,
+    val quality: IrisQualityProperties = IrisQualityProperties(),
 )
 
 data class FaceConfig(
@@ -39,12 +42,14 @@ class BiometricSdkConfigBuilder {
         return this
     }
 
+    @JvmOverloads
     fun withIris(
         extractor: IrisExtractProperties,
         encoder: IrisEncodeProperties,
-        matcher: IrisMatchProperties
+        matcher: IrisMatchProperties,
+        quality: IrisQualityProperties = IrisQualityProperties(),
     ): BiometricSdkConfigBuilder {
-        this.irisConfig = IrisConfig(extractor, encoder, matcher)
+        this.irisConfig = IrisConfig(extractor, encoder, matcher, quality)
         return this
     }
 

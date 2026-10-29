@@ -74,6 +74,19 @@ The default threshold is 0.67 (Hamming distance 0.33). The right value depends o
 your sensors, population and the false match rate you can accept: measure it on
 your own images with the benchmark below and set `IrisMatchProperties(threshold = ...)`.
 
+## Quality
+Check a capture before enrollment, for example to ask the user for another shot:
+```java
+IrisQuality q = instance.iris().quality().assess(eye);
+if (q == null || !q.isAcceptable()) { /* retake: see q.getIssues() */ }
+```
+The assessment reports the components of ISO/IEC 29794-6: usable iris area,
+iris-sclera and iris-pupil contrast, grey scale utilisation, iris radius,
+pupil/iris ratio, concentricity, margins and sharpness, plus a combined score
+(0-100) and the list of failed checks. Thresholds are set with
+`IrisQualityProperties`. This is not a certified implementation of the standard;
+confirm the thresholds on your own sensors.
+
 ## Accuracy benchmark
 `IrisDatasetBenchmark` (JVM tests) enrolls every image of a dataset and reports
 failure to enroll, genuine and impostor score distributions, EER and FNMR at fixed

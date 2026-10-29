@@ -11,6 +11,8 @@ import net.iriscan.sdk.iris.IrisExtractor
 import net.iriscan.sdk.iris.IrisMatch
 import net.iriscan.sdk.iris.IrisMatcher
 import net.iriscan.sdk.iris.IrisOperations
+import net.iriscan.sdk.iris.IrisQuality
+import net.iriscan.sdk.iris.IrisQualityAssessor
 
 /**
  * @author Slava Gornostal
@@ -72,5 +74,9 @@ internal class IrisOperationsImpl(private val config: IrisConfig) : IrisOperatio
             val threshold = if (IrisTemplate.isV2(probe)) config.matcher.threshold else config.matcher.legacyThreshold
             return if (score >= threshold) IrisMatch(index, score) else null
         }
+    }
+
+    override fun quality(): IrisQualityAssessor = object : IrisQualityAssessor {
+        override fun assess(sample: Image): IrisQuality? = assessQuality(sample, config.extractor, config.quality)
     }
 }

@@ -1,6 +1,8 @@
 package net.iriscan.sdk.finger.record.iso
 
-import com.soywiz.korio.stream.*
+import net.iriscan.sdk.core.io.MemoryStream
+import net.iriscan.sdk.core.io.buildBytes
+
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
@@ -13,10 +15,10 @@ import net.iriscan.sdk.io.record.BiometricRecordSerializer
 class IsoRecord19794_2Serializer : BiometricRecordSerializer<IsoRecord19794_2> {
     override val formatIdentifier: String get() = ""
     override fun canRead(data: ByteArray): Boolean =
-        data.size > 53 && MemorySyncStream(data).readStringz(3) == "FMR"
+        data.size > 53 && MemoryStream(data).readStringz(3) == "FMR"
 
     override fun read(data: ByteArray): IsoRecord19794_2 {
-        val stream = MemorySyncStream(data)
+        val stream = MemoryStream(data)
 
         val formatIdentifier = stream.readStringz(4)
         val formatVersion = stream.readStringz(4)
@@ -125,7 +127,7 @@ class IsoRecord19794_2Serializer : BiometricRecordSerializer<IsoRecord19794_2> {
         )
     }
 
-    override fun write(record: IsoRecord19794_2): ByteArray = MemorySyncStreamToByteArray {
+    override fun write(record: IsoRecord19794_2): ByteArray = buildBytes {
         //Finger general header
         writeStringz(record.formatIdentifier)
         writeStringz(record.formatVersion)

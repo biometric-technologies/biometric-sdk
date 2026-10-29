@@ -1,11 +1,10 @@
 package net.iriscan.sdk.io.image.serializers
 
-import com.soywiz.korio.compression.compress
-import com.soywiz.korio.compression.deflate.ZLib
-import com.soywiz.korio.compression.uncompress
-import com.soywiz.korio.lang.toByteArray
-import com.soywiz.korio.stream.*
-import com.soywiz.korio.util.checksum.CRC32
+import net.iriscan.sdk.core.io.MemoryStream
+import net.iriscan.sdk.core.io.buildBytes
+import net.iriscan.sdk.core.io.CRC32
+import net.iriscan.sdk.core.io.ZLib
+
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.io.exception.IOException
 import kotlin.math.abs
@@ -22,7 +21,7 @@ internal class PngChunkData(
     var data: ByteArray = byteArrayOf()
 )
 
-internal fun readPngChunks(stream: SyncStream): PngChunkData {
+internal fun readPngChunks(stream: MemoryStream): PngChunkData {
     val data = PngChunkData()
     val length = stream.readS32BE()
     if (stream.availableRead < length) {
@@ -37,21 +36,25 @@ internal fun readPngChunks(stream: SyncStream): PngChunkData {
     return data
 }
 
-private fun readChunks(stream: SyncStream, data: PngChunkData) {
-    val length = stream.readS32BE()
-    when (stream.readStringz(4)) {
-        "PLTE" -> readPLTE(stream, length, data)
-        "IDAT" -> readIDAT(stream, length, data)
-        "IEND" -> return
-        else -> stream.skip(length)
+private fun readChunks(stream: MemoryStream, data: PngChunkData) {
+    // Image data may be split over several IDAT chunks; it is one zlib stream.
+    val idat = MemoryStream()
+    while (true) {
+        val length = stream.readS32BE()
+        when (stream.readStringz(4)) {
+            "PLTE" -> readPLTE(stream, length, data)
+            "IDAT" -> idat.writeBytes(stream.readBytes(length))
+            "IEND" -> break
+            else -> stream.skip(length)
+        }
+        // crc
+        stream.skip(4)
     }
-    // crc
-    stream.skip(4)
-    readChunks(stream, data)
+    data.data = ZLib.uncompress(idat.toByteArray())
 }
 
 
-private fun readIHDR(stream: SyncStream, data: PngChunkData) {
+private fun readIHDR(stream: MemoryStream, data: PngChunkData) {
     data.width = stream.readS32BE()
     data.height = stream.readS32BE()
     // bitDepth
@@ -63,12 +66,8 @@ private fun readIHDR(stream: SyncStream, data: PngChunkData) {
     stream.skip(4)
 }
 
-private fun readPLTE(stream: SyncStream, length: Int, data: PngChunkData) {
+private fun readPLTE(stream: MemoryStream, length: Int, data: PngChunkData) {
     data.palette = stream.readBytes(length)
-}
-
-private fun readIDAT(stream: SyncStream, length: Int, data: PngChunkData) {
-    data.data = stream.readBytes(length).uncompress(ZLib)
 }
 
 internal fun paethPredictor(a: Int, b: Int, c: Int): Int {
@@ -79,13 +78,13 @@ internal fun paethPredictor(a: Int, b: Int, c: Int): Int {
     return if ((pa <= pb) && (pa <= pc)) a else if (pb <= pc) b else c
 }
 
-internal fun writeChunk(stream: SyncStream, name: String, image: Image) {
+internal fun writeChunk(stream: MemoryStream, name: String, image: Image) {
     var crc = CRC32.initialValue
 
     when (name) {
         "IHDR" -> {
             stream.write32BE(13)
-            stream.writeBytes("IHDR".toByteArray())
+            stream.writeBytes("IHDR".encodeToByteArray())
             stream.write32BE(image.width)
             stream.write32BE(image.height)
             stream.write8(8) // bitDepth
@@ -94,30 +93,30 @@ internal fun writeChunk(stream: SyncStream, name: String, image: Image) {
             stream.write8(0) // filterMethod
             stream.write8(0) // interlaceMethod
 
-            crc = CRC32.update(crc, name.toByteArray(), 0, name.toByteArray().size)
+            crc = CRC32.update(crc, name.encodeToByteArray(), 0, name.encodeToByteArray().size)
             val writtenData = stream.toByteArray()
             val data = writtenData.sliceArray(writtenData.size - 13 until writtenData.size)
             crc = CRC32.update(crc, data, 0, data.size)
         }
         "IDAT" -> {
-            var compressedData = MemorySyncStreamToByteArray{
+            var compressedData = buildBytes{
                 val colors = image.colors.toList().chunked(image.width).map { it.toIntArray() }
                 for (y in 0 until image.height) {
                     write8(0) //no filter
                     colors[y].forEach { write24LE(it) }
                 }
             }
-            compressedData = compressedData.compress(ZLib)
+            compressedData = ZLib.compress(compressedData)
             stream.write32BE(compressedData.size)
-            stream.writeBytes("IDAT".toByteArray())
+            stream.writeBytes("IDAT".encodeToByteArray())
             stream.writeBytes(compressedData)
-            crc = CRC32.update(crc, name.toByteArray(), 0, name.toByteArray().size)
+            crc = CRC32.update(crc, name.encodeToByteArray(), 0, name.encodeToByteArray().size)
             crc = CRC32.update(crc, compressedData, 0, compressedData.size)
         }
         "IEND" -> {
             stream.write32BE(0)
-            stream.writeBytes("IEND".toByteArray())
-            crc = CRC32.update(crc, name.toByteArray(), 0, name.toByteArray().size)
+            stream.writeBytes("IEND".encodeToByteArray())
+            crc = CRC32.update(crc, name.encodeToByteArray(), 0, name.encodeToByteArray().size)
             crc = CRC32.update(crc, byteArrayOf(), 0, 0)
         }
         else -> throw IOException("Unknown chunk")

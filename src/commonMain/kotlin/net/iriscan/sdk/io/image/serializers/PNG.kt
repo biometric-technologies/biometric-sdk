@@ -2,9 +2,11 @@
 
 package net.iriscan.sdk.io.image.serializers
 
-import com.soywiz.kmem.readS24LE
-import com.soywiz.kmem.readS32LE
-import com.soywiz.korio.stream.*
+import net.iriscan.sdk.core.io.MemoryStream
+import net.iriscan.sdk.core.io.buildBytes
+import net.iriscan.sdk.core.io.readS24LE
+import net.iriscan.sdk.core.io.readS32LE
+
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.image.ImageColorType
 import net.iriscan.sdk.io.exception.IOException
@@ -24,11 +26,11 @@ internal object PNG : ImageSerializer {
         get() = ImageFormat.PNG
 
     override fun canRead(data: ByteArray): Boolean =
-        data.size > 8 && MemorySyncStream(data).readUByteArray(8)
+        data.size > 8 && MemoryStream(data).readUByteArray(8)
             .contentEquals(MAGIC)
 
     override fun read(data: ByteArray): Image {
-        val stream = MemorySyncStream(data)
+        val stream = MemoryStream(data)
         stream.skip(8) //header
         val pngData = readPngChunks(stream)
         val bytesPerPixel = when (pngData.colorType) {
@@ -36,7 +38,7 @@ internal object PNG : ImageSerializer {
             6 -> 4
             else -> throw IOException("Unsupported color type ${pngData.colorType}")
         }
-        val dataStream = MemorySyncStream(pngData.data)
+        val dataStream = MemoryStream(pngData.data)
         var previous: UByteArray = ubyteArrayOf()
         var current: UByteArray
         val rowWidth = pngData.width * bytesPerPixel
@@ -90,7 +92,7 @@ internal object PNG : ImageSerializer {
         )
     }
 
-    override fun write(image: Image): ByteArray = MemorySyncStreamToByteArray {
+    override fun write(image: Image): ByteArray = buildBytes {
         writeBytes(MAGIC.toByteArray())
         writeChunk(this, "IHDR", image)
         writeChunk(this, "IDAT", image)

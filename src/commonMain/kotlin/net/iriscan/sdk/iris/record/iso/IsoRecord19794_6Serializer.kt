@@ -1,6 +1,8 @@
 package net.iriscan.sdk.iris.record.iso
 
-import com.soywiz.korio.stream.*
+import net.iriscan.sdk.core.io.MemoryStream
+import net.iriscan.sdk.core.io.buildBytes
+
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
@@ -15,10 +17,10 @@ import net.iriscan.sdk.iris.exts.findEnumById
 class IsoRecord19794_6Serializer : BiometricRecordSerializer<IsoRecord19794_6> {
     override val formatIdentifier: String get() = ""
     override fun canRead(data: ByteArray): Boolean =
-        data.size > 68 && MemorySyncStream(data).readStringz(3) == "IIR"
+        data.size > 68 && MemoryStream(data).readStringz(3) == "IIR"
 
     override fun read(data: ByteArray): IsoRecord19794_6 {
-        val stream = MemorySyncStream(data)
+        val stream = MemoryStream(data)
 
         val formatIdentifier = stream.readStringz(4)
         val formatVersion = stream.readStringz(4)
@@ -125,7 +127,7 @@ class IsoRecord19794_6Serializer : BiometricRecordSerializer<IsoRecord19794_6> {
         )
     }
 
-    override fun write(record: IsoRecord19794_6): ByteArray = MemorySyncStreamToByteArray {
+    override fun write(record: IsoRecord19794_6): ByteArray = buildBytes {
         //Iris general header
         writeStringz(record.formatIdentifier)
         writeStringz(record.formatVersion)

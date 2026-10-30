@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" font-family="Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-label="Segmentation, unwrapping and coding of the iris">
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1c77c3"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="299" rx="16" fill="#ffffff" stroke="#d0d7de"/>
+<!-- 1 segmentation -->
+<g transform="translate(40,40)">
+<text x="100" y="0" text-anchor="middle" font-size="16" fill="#0a328f">1. Segment</text>
+<rect y="15" width="200" height="150" rx="10" fill="#eaf4ff" stroke="#1c77c3"/>
+<ellipse cx="100" cy="90" rx="80" ry="45" fill="#ffffff" stroke="#9aa5b1"/>
+<circle cx="100" cy="90" r="42" fill="#5cc8ff" fill-opacity="0.5" stroke="#1c77c3" stroke-width="2" stroke-dasharray="5 3"/>
+<circle cx="100" cy="90" r="16" fill="#0a328f" stroke="#1c77c3" stroke-width="2"/>
+<path d="M30,62 Q100,30 170,62" fill="none" stroke="#d1242f" stroke-width="2"/>
+<path d="M30,118 Q100,150 170,118" fill="none" stroke="#d1242f" stroke-width="2"/>
+<text x="100" y="190" text-anchor="middle" font-size="13" fill="#57606a">two circles, pupil and limbus;</text>
+<text x="100" y="208" text-anchor="middle" font-size="13" fill="#57606a">eyelids and reflections masked</text>
+</g>
+<path d="M250,130 L300,130" stroke="#1c77c3" stroke-width="2" marker-end="url(#a)"/>
+<!-- 2 unwrap -->
+<g transform="translate(310,40)">
+<text x="140" y="0" text-anchor="middle" font-size="16" fill="#0a328f">2. Unwrap</text>
+<rect y="15" width="280" height="150" rx="10" fill="#eaf4ff" stroke="#1c77c3"/>
+<rect x="20" y="55" width="240" height="60" fill="#ffffff" stroke="#1c77c3"/>
+<g fill="none" stroke="#5cc8ff" stroke-width="2">
+<path d="M20,70 q10,-8 20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0"/>
+<path d="M20,85 q10,8 20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0"/>
+<path d="M20,100 q10,-6 20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0 t20,0"/>
+</g>
+<rect x="60" y="55" width="40" height="60" fill="#d1242f" fill-opacity="0.25"/>
+<rect x="190" y="55" width="30" height="60" fill="#d1242f" fill-opacity="0.25"/>
+<text x="140" y="140" text-anchor="middle" font-size="13" fill="#57606a">the ring becomes a strip (angle × radius)</text>
+<text x="140" y="190" text-anchor="middle" font-size="13" fill="#57606a">red = masked, ignored when comparing</text>
+</g>
+<path d="M600,130 L650,130" stroke="#1c77c3" stroke-width="2" marker-end="url(#a)"/>
+<!-- 3 code -->
+<g transform="translate(660,40)">
+<text x="130" y="0" text-anchor="middle" font-size="16" fill="#0a328f">3. Code and compare</text>
+<rect y="15" width="260" height="150" rx="10" fill="#eaf4ff" stroke="#1c77c3"/>
+<text x="20" y="52" font-size="12" fill="#57606a">A</text>
+<text x="40" y="52" font-size="13" font-family="Consolas, Menlo, monospace" fill="#0a328f">1011001110100101110010</text>
+<text x="20" y="76" font-size="12" fill="#57606a">B</text>
+<text x="40" y="76" font-size="13" font-family="Consolas, Menlo, monospace" fill="#0a328f">1011011110100001110010</text>
+<text x="40" y="98" font-size="13" font-family="Consolas, Menlo, monospace" fill="#d1242f">.....x........x.......</text>
+<text x="130" y="128" text-anchor="middle" font-size="14" fill="#0a328f">2 of 22 bits differ → same eye</text>
+<text x="130" y="150" text-anchor="middle" font-size="13" fill="#57606a">different eyes differ in about half the bits</text>
+<text x="130" y="190" text-anchor="middle" font-size="13" fill="#57606a">real codes have thousands of bits</text>
+</g>
+<text x="480" y="275" text-anchor="middle" font-size="14" fill="#57606a">The iris texture is set before birth and stays the same for life; even identical twins have different codes.</text>
+</svg>

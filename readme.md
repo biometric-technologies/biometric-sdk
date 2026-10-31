@@ -22,7 +22,7 @@ Iriscan uses the same code in its own products, and the face match of this SDK i
 - Reads and writes PNG and BMP images and converts to and from Bitmap, UIImage and BufferedImage.
 - Serializes templates as ISO/IEC 19794-6 (iris image) and ISO/IEC 19794-2 (finger minutiae) records, the formats other biometric systems understand.
 
-![From an eye image to a match score](.github/readme/iris-pipeline.svg)
+![What the SDK does with a real eye image: segmentation, unwrapped strip, iris code](.github/readme/iris-pipeline.svg)
 
 ## Quick start
 
@@ -103,7 +103,9 @@ Models are downloaded once and cached on the device. Working example apps: [Andr
 
 **Iris.** The iris is the colored ring around the pupil. Its texture is formed before birth, does not change with age and differs even between identical twins and between a person's two eyes, which is why it is the most accurate biometric in everyday use. The SDK finds the pupil and the outer edge of the iris in the image, masks out eyelids and reflections, unwraps the ring into a rectangular strip and turns the texture of the strip into a string of bits, the iris code (release 0.6.0 compares neighboring pixels into local binary patterns; the new pipeline in pull request #6 uses log-Gabor filters, the classic iris-code method). Two codes are compared by counting the bits that differ, ignoring masked areas; the SDK reports a similarity between 0 and 1 and calls it a match above the threshold you configured. Iris cameras use near-infrared light, which makes the texture visible even in dark eyes, so the algorithm expects NIR images.
 
-![What the iris pipeline does to an eye image](.github/readme/iris-steps.svg)
+![How two real iris codes are compared bit by bit](.github/readme/iris-steps.svg)
+
+The pictures above are real output of the iris pipeline on the iris photo from our blog and on a [near-infrared eye photo](https://commons.wikimedia.org/wiki/File:IRiris.jpg) by Boodlemason (Wikimedia Commons, CC BY-SA 3.0); the figure files are under the same license.
 
 **Face.** The platform's face detector finds the largest face and its eyes, the SDK crops and aligns it, and a FaceNet-type neural network turns the crop into a list of numbers called an embedding. Faces of the same person give embeddings that are close together; the matcher measures the distance and compares it with the threshold. The network is a TensorFlow Lite file that you choose and host, so you can replace it with a better one without touching the SDK. The liveness check runs a second model on the face crop and returns a score; the position check uses the detector's head angles.
 

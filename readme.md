@@ -4,7 +4,7 @@
 
 An open-source library that recognizes people by their iris or their face, and runs on Android, iOS and the JVM from one Kotlin code base. You give it an eye image or a selfie; it gives you a compact template and a yes-or-no answer to "is this the same person?". Nothing leaves the device or your server: there is no cloud call anywhere in the code.
 
-Iriscan uses the same code in its own products, and the face match of this SDK is the one that runs inside [Inji Wallet](https://docs.iriscan.net/mosip), the reference wallet of MOSIP, the open-source national ID platform.
+Iriscan uses the same code in its own products, and the face match of this SDK is the one that runs inside [Inji Wallet](https://docs.iriscan.com/mosip), the reference wallet of MOSIP, the open-source national ID platform.
 
 ![Workflow name](https://github.com/biometric-technologies/biometric-sdk/actions/workflows/release.yml/badge.svg)
 [![Maven Central](https://img.shields.io/maven-central/v/net.iriscan/biometric-sdk.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22net.iriscan%22%20AND%20a:%22biometric-sdk%22)
@@ -111,7 +111,7 @@ The pictures above are real output of the iris pipeline on the iris photo from o
 
 **Templates, not photos.** A template is small, cannot be turned back into the image, and is what you keep in your database. The ISO/IEC 19794 serializers let you exchange records with other vendors' software instead of being locked in.
 
-More detail, including configuration parameters and per-platform notes, is on [docs.iriscan.net](https://docs.iriscan.net/).
+More detail, including configuration parameters and per-platform notes, is on [docs.iriscan.com](https://docs.iriscan.com/).
 
 ## Accuracy
 
@@ -119,7 +119,7 @@ Release 0.6.0 contains the first generation of the iris encoder. A new iris pipe
 
 ## Where it is used
 
-- Face match in [Inji Wallet](https://docs.iriscan.net/mosip), listed as compliant on the [MOSIP marketplace](https://marketplace.mosip.io/products/257).
+- Face match in [Inji Wallet](https://docs.iriscan.com/mosip), listed as compliant on the [MOSIP marketplace](https://marketplace.mosip.io/products/257).
 - [Iriscan Cloud](https://www.iriscan.com/iris-recognition-sdk) and the Iriscan iris de-duplication server.
 - Apps built with the [React Native wrapper](https://github.com/biometric-technologies/biometric-sdk-react-native).
 

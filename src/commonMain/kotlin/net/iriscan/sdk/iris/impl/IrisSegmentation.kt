@@ -61,6 +61,12 @@ private fun ring(ranges: List<ClosedRange<Double>>, stepDeg: Double, sectorsPerR
     )
 }
 
+/** Score factor of a candidate that is dark only along a line (spectacle frame, eyelashes). */
+private const val SURROUND_FLOOR = 0.25
+
+/** Score factor of a candidate with an illuminator glint inside. */
+private const val GLINT_BONUS = 1.3
+
 /** Pupil boundary must be present in at least ~5 of 8 sectors (tolerates eyelids and glints). */
 private const val PUPIL_SECTOR_QUANTILE = 0.375
 
@@ -212,13 +218,60 @@ private fun discMean(img: GrayImage, cx: Double, cy: Double, r: Double): Double 
 
 private class PupilHit(val c: IrisCircle, val edge: Double, val score: Double)
 
-private fun pupilAt(img: GrayImage, cx: Double, cy: Double, rMin: Double, rMax: Double, rStep: Double): PupilHit? {
+private fun pupilAt(
+    img: GrayImage, glints: BooleanArray?, cx: Double, cy: Double, rMin: Double, rMax: Double, rStep: Double,
+): PupilHit? {
     val e = strongestEdge(img, cx, cy, rMin, rMax, rStep, FULL_RING, sectorQuantile = PUPIL_SECTOR_QUANTILE) ?: return null
     val inner = discMean(img, cx, cy, e.r)
     if (inner.isNaN()) return null
     // prefer a dark interior: separates the pupil from the limbus and from eyelash clusters
-    val score = e.strength * (255.0 - inner).coerceAtLeast(0.0) / 255.0
+    val score = e.strength * (255.0 - inner).coerceAtLeast(0.0) / 255.0 *
+            surroundFactor(img, cx, cy, e.r) * glintFactor(glints, img.width, img.height, cx, cy, e.r)
     return PupilHit(IrisCircle(cx, cy, e.r), e.strength, score)
+}
+
+/**
+ * The pupil is darker than its surroundings on every side. A spectacle frame or an
+ * eyelash band is dark along a line, so the surroundings are dark on two opposite
+ * sides. One side may be covered by an eyelid, so the second weakest of the eight
+ * sector contrasts is compared with the median one.
+ */
+private fun surroundFactor(img: GrayImage, cx: Double, cy: Double, r: Double): Double {
+    val sk = FULL_RING.sectors
+    val inside = DoubleArray(sk)
+    val outside = DoubleArray(sk)
+    sectorMeans(img, cx, cy, 0.5 * r, FULL_RING, inside)
+    sectorMeans(img, cx, cy, 1.4 * r, FULL_RING, outside)
+    val c = ArrayList<Double>(sk)
+    for (k in 0 until sk) if (!inside[k].isNaN() && !outside[k].isNaN()) c += outside[k] - inside[k]
+    if (c.size < 6) return SURROUND_FLOOR
+    c.sort()
+    val med = c[c.size / 2]
+    if (med <= 0) return SURROUND_FLOOR
+    return SURROUND_FLOOR + (1 - SURROUND_FLOOR) * (c[1] / med).coerceIn(0.0, 1.0)
+}
+
+/**
+ * Near-infrared illuminators leave small specular glints, almost always inside the
+ * pupil or on its border. A candidate with a small glint inside gets a bonus; large
+ * reflections (spectacle lenses) do not count.
+ */
+private fun glintFactor(glints: BooleanArray?, w: Int, h: Int, cx: Double, cy: Double, r: Double): Double {
+    if (glints == null) return 1.0
+    val rr = 1.1 * r
+    var n = 0
+    var tot = 0
+    val y0 = max(0, (cy - rr).toInt())
+    val y1 = min(h - 1, (cy + rr).toInt())
+    val x0 = max(0, (cx - rr).toInt())
+    val x1 = min(w - 1, (cx + rr).toInt())
+    for (y in y0..y1) for (x in x0..x1) {
+        if (hypot(x - cx, y - cy) > rr) continue
+        tot++
+        if (glints[y * w + x]) n++
+    }
+    if (tot == 0 || n == 0) return 1.0
+    return if (n.toDouble() / tot <= 0.3) GLINT_BONUS else 1.0
 }
 
 /**
@@ -229,6 +282,7 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
     val scale = min(1.0, props.workingSize / minSideFull)
     val small = downscale(full, scale)
     val refl = reflectionMask(small, dilate = 3)
+    val glints = smallReflections(refl, small.width, small.height, maxArea = (0.004 * small.width * small.height).toInt())
     val clean = inpaint(small, refl)
     val img = gaussianBlur(clean, 1.2)
     val minSide = min(img.width, img.height).toDouble()
@@ -242,7 +296,7 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
     //    represented by its centroid and equivalent radius, so the search starts
     //    near the true center even when the darkest pixel is off-center.
     val dark = gaussianBlur(clean, 2.0)
-    val candidates = darkBlobs(dark, rpMin, rpMax, maxBlobs = 8)
+    val candidates = darkBlobs(dark, rpMin, rpMax, maxBlobs = 12)
     if (candidates.isEmpty()) return null
 
     // 2. coarse pupil search around each blob
@@ -252,7 +306,7 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
         val rLo = max(rpMin, 0.5 * blob.r)
         val rHi = min(rpMax, max(rLo + 4, 1.6 * blob.r))
         for (dy in -reach..reach step 2) for (dx in -reach..reach step 2) {
-            val hit = pupilAt(img, blob.x + dx, blob.y + dy, rLo, rHi, 1.0) ?: continue
+            val hit = pupilAt(img, glints, blob.x + dx, blob.y + dy, rLo, rHi, 1.0) ?: continue
             if (bestPupil == null || hit.score > bestPupil.score) bestPupil = hit
         }
     }
@@ -261,7 +315,7 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
     for (dy in -4..4) for (dx in -4..4) {
         val cx = pupil.c.x + dx * 0.5
         val cy = pupil.c.y + dy * 0.5
-        val hit = pupilAt(img, cx, cy, max(rpMin, pupil.c.r - 4), min(rpMax, pupil.c.r + 4), 0.5) ?: continue
+        val hit = pupilAt(img, glints, cx, cy, max(rpMin, pupil.c.r - 4), min(rpMax, pupil.c.r + 4), 0.5) ?: continue
         if (hit.score > pupil.score) pupil = hit
     }
     pupil = expandPupil(img, pupil, rpMax)
@@ -348,6 +402,38 @@ private fun irisReference(img: GrayImage, p: IrisCircle, iris: IrisCircle): Pair
     return med.toDouble() to max(2.0, 1.4826 * mad)
 }
 
+/** Longest to shortest axis ratio of a dark patch that can still be a pupil. */
+private const val MAX_BLOB_ELONGATION = 3.0
+
+/** Reflection mask without its large components (spectacle lenses), i.e. the illuminator glints. */
+private fun smallReflections(mask: BooleanArray, w: Int, h: Int, maxArea: Int): BooleanArray {
+    val out = BooleanArray(mask.size)
+    val seen = BooleanArray(mask.size)
+    val queue = IntArray(mask.size)
+    for (s in mask.indices) {
+        if (!mask[s] || seen[s]) continue
+        var head = 0
+        var tail = 0
+        queue[tail++] = s
+        seen[s] = true
+        while (head < tail) {
+            val i = queue[head++]
+            val x = i % w
+            val y = i / w
+            for ((nx, ny) in arrayOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1)) {
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
+                val j = ny * w + nx
+                if (mask[j] && !seen[j]) {
+                    seen[j] = true
+                    queue[tail++] = j
+                }
+            }
+        }
+        if (tail <= maxArea) for (k in 0 until tail) out[queue[k]] = true
+    }
+    return out
+}
+
 /**
  * Dark connected regions, grown from the darkest seeds. Returns up to [maxBlobs]
  * blobs with plausible pupil size as circles (centroid, equivalent radius).
@@ -374,11 +460,22 @@ private fun darkBlobs(img: GrayImage, rMin: Double, rMax: Double, maxBlobs: Int)
         visited[seed] = true
         var sx = 0.0
         var sy = 0.0
-        while (head < tail && tail < maxArea) {
+        var sxx = 0.0
+        var syy = 0.0
+        var sxy = 0.0
+        var area = 0
+        // breadth-first growth: the first maxArea pixels form a compact patch around the seed and
+        // give the candidate; the rest of the region is only marked, so that one large dark region
+        // (a spectacle frame, hair, an eyebrow) does not seed every candidate
+        while (head < tail) {
             val i = queue[head++]
             val x = i % w
             val y = i / w
-            sx += x; sy += y
+            if (area < maxArea) {
+                sx += x; sy += y
+                sxx += x.toDouble() * x; syy += y.toDouble() * y; sxy += x.toDouble() * y
+                area++
+            }
             for ((nx, ny) in arrayOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1)) {
                 if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
                 val j = ny * w + nx
@@ -388,9 +485,25 @@ private fun darkBlobs(img: GrayImage, rMin: Double, rMax: Double, maxBlobs: Int)
                 }
             }
         }
-        val area = head
         if (area < minArea) continue
-        out += IrisCircle(sx / area, sy / area, sqrt(area / PI))
+        val mx = sx / area
+        val my = sy / area
+        // elongation of the patch: a pupil, even half covered by an eyelid, is not a line
+        val vxx = sxx / area - mx * mx
+        val vyy = syy / area - my * my
+        val vxy = sxy / area - mx * my
+        val tr = vxx + vyy
+        val det = vxx * vyy - vxy * vxy
+        val disc = sqrt(max(0.0, tr * tr / 4 - det))
+        val l1 = tr / 2 + disc
+        val l2 = tr / 2 - disc
+        if (l2 <= 0 || l1 / l2 > MAX_BLOB_ELONGATION * MAX_BLOB_ELONGATION) continue
+        val r = min(rMax, sqrt(area / PI))
+        out += IrisCircle(mx, my, r)
+        // the darkest point of the region, when it is away from the centroid (pupil merged with a dark iris or eyelashes)
+        val seedX = (seed % w).toDouble()
+        val seedY = (seed / w).toDouble()
+        if (hypot(seedX - mx, seedY - my) > 0.3 * r) out += IrisCircle(seedX, seedY, r)
     }
     return out
 }

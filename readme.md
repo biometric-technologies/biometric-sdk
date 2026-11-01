@@ -14,6 +14,16 @@ Iriscan uses the same code in its own products, and the face match of this SDK i
 [![GitHub release](https://img.shields.io/github/v/release/biometric-technologies/biometric-sdk)](https://GitHub.com/biometric-technologies/biometric-sdk/releases/)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE.md)
 
+**Documentation:** [full reference](DOCUMENTATION.md) ·
+[installation](DOCUMENTATION.md#installation) ·
+[configuration](DOCUMENTATION.md#initialization-and-configuration) ·
+[iris recognition](DOCUMENTATION.md#iris-recognition) ·
+[face and liveness](DOCUMENTATION.md#face-recognition-and-liveness) ·
+[images and ISO records](DOCUMENTATION.md#images-records-and-io) ·
+[accuracy](DOCUMENTATION.md#accuracy-and-the-benchmark) ·
+[known limitations](DOCUMENTATION.md#limitations-and-known-gaps) ·
+[docs.iriscan.com](https://docs.iriscan.com/sdk)
+
 ## What it does
 
 - Turns a near-infrared photo of an eye into an iris template and compares two templates. The whole iris pipeline is plain Kotlin, so it behaves the same on every platform and needs no native libraries.
@@ -111,7 +121,7 @@ The pictures above are real output of the iris pipeline on the iris photo from o
 
 **Templates, not photos.** A template is small, cannot be turned back into the image, and is what you keep in your database. The ISO/IEC 19794 serializers let you exchange records with other vendors' software instead of being locked in.
 
-More detail, including configuration parameters and per-platform notes, is on [docs.iriscan.com](https://docs.iriscan.com/).
+More detail, including every configuration parameter, the iris pipeline step by step and per-platform notes, is in the [full documentation](DOCUMENTATION.md); integration guides for the cloud and the edge service are on [docs.iriscan.com](https://docs.iriscan.com/).
 
 ## Accuracy
 

@@ -476,8 +476,8 @@ private fun smallReflections(mask: BooleanArray, w: Int, h: Int, maxArea: Int): 
  * Dark connected regions, grown from the darkest seeds. Returns up to [maxBlobs]
  * blobs with plausible pupil size as circles (centroid, equivalent radius).
  */
-/** Number of pupil candidates taken from [darkDiscs]. */
-private const val DARK_DISC_CANDIDATES = 4
+/** Number of pupil candidates taken from [darkDiscs]; compact dark things (a spectacle hinge) can outscore the pupil on contrast, the edge test in pupilAt then decides. */
+private const val DARK_DISC_CANDIDATES = 12
 
 /** Radii tried by [darkDiscs] grow by this factor from the smallest to the largest pupil. */
 private const val DARK_DISC_RADIUS_STEP = 1.25

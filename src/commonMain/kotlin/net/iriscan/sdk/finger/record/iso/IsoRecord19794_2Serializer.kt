@@ -167,16 +167,17 @@ class IsoRecord19794_2Serializer : BiometricRecordSerializer<IsoRecord19794_2> {
         //Finger general header
         writeStringz(record.formatIdentifier)
         writeStringz(record.formatVersion)
-        write32BE(record.data.sumOf { it.size } + GENERAL_HEADER_BYTES)
+        // certification blocks are not part of IsoRecord19794_2DataBlock.size: a count byte plus 3 bytes each
+        fun certificationBytes(block: IsoRecord19794_2DataBlock) =
+            if (record.certificationFlag.toInt() == CERTIFICATION_FLAG_SET) {
+                1 + CERTIFICATION_BLOCK_BYTES * block.header.certificationRecords.size
+            } else 0
+        write32BE(record.data.sumOf { it.size + certificationBytes(it) } + GENERAL_HEADER_BYTES)
         write16BE(record.numberOfFingers)
         write8(record.certificationFlag.toInt())
         record.data.forEach {
             //Finger representation header
-            // certification blocks are not part of IsoRecord19794_2DataBlock.size: a count byte plus 3 bytes each
-            val certificationRecordsLength = if (record.certificationFlag.toInt() == CERTIFICATION_FLAG_SET) {
-                1 + CERTIFICATION_BLOCK_BYTES * it.header.certificationRecords.size
-            } else 0
-            write32BE(it.size + certificationRecordsLength)
+            write32BE(it.size + certificationBytes(it))
             val date = it.header.dateAndTime.toLocalDateTime(TimeZone.UTC)
             write16BE(date.year)
             write8(date.monthNumber)

@@ -7,6 +7,8 @@ plugins {
     id("maven-publish")
     id("com.android.library")
     id("convention.publication")
+    // test coverage of the JVM and Android unit tests (commonTest runs as part of them)
+    id("org.jetbrains.kotlinx.kover") version "0.9.1"
 }
 
 group = "net.iriscan"

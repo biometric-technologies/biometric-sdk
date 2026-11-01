@@ -298,7 +298,10 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
     val dark = gaussianBlur(clean, 2.0)
     // plus candidates next to illuminator glints: where the pupil is joined with dark eyelashes
     // or a dark iris, the dark region does not give its center, the glints do
+    // plus dark discs: the region growing in darkBlobs can swallow the pupil into a larger dark
+    // region reached first (a spectacle frame joined to the eyelashes), the disc detector cannot
     val candidates = darkBlobs(dark, rpMin, rpMax, maxBlobs = 12) +
+            darkDiscs(dark, rpMin, rpMax, maxDiscs = DARK_DISC_CANDIDATES) +
             glintCenters(glints, img.width, img.height, maxCenters = 8).map { IrisCircle(it.first, it.second, 0.6 * rpMax) }
     if (candidates.isEmpty()) return null
 
@@ -473,6 +476,69 @@ private fun smallReflections(mask: BooleanArray, w: Int, h: Int, maxArea: Int): 
  * Dark connected regions, grown from the darkest seeds. Returns up to [maxBlobs]
  * blobs with plausible pupil size as circles (centroid, equivalent radius).
  */
+/** Number of pupil candidates taken from [darkDiscs]. */
+private const val DARK_DISC_CANDIDATES = 4
+
+/** Radii tried by [darkDiscs] grow by this factor from the smallest to the largest pupil. */
+private const val DARK_DISC_RADIUS_STEP = 1.25
+
+/**
+ * Pupil candidates from a dark-disc detector, independent of region growing: positions and radii
+ * where a square of side 1.6 r is darkest compared with the band around it (the square of side
+ * 3.2 r minus the inner one). A pupil is a dark disc in a brighter iris and scores high; a piece
+ * of a spectacle frame or an eyebrow continues into the band and scores low. Only squares fully
+ * inside the image are tried, as a pupil cut by the image border cannot be segmented anyway.
+ * Box sums come from an integral image, so each test costs eight reads.
+ */
+private fun darkDiscs(img: GrayImage, rMin: Double, rMax: Double, maxDiscs: Int): List<IrisCircle> {
+    val w = img.width
+    val h = img.height
+    val stride = w + 1
+    val sums = DoubleArray(stride * (h + 1))
+    for (y in 0 until h) {
+        var row = 0.0
+        for (x in 0 until w) {
+            row += img.data[y * w + x]
+            sums[(y + 1) * stride + x + 1] = sums[y * stride + x + 1] + row
+        }
+    }
+    // sum over x0 <= x < x1, y0 <= y < y1
+    fun box(x0: Int, y0: Int, x1: Int, y1: Int) =
+        sums[y1 * stride + x1] - sums[y0 * stride + x1] - sums[y1 * stride + x0] + sums[y0 * stride + x0]
+
+    class Hit(val x: Int, val y: Int, val r: Double, val contrast: Double)
+    val hits = ArrayList<Hit>()
+    var r = rMin
+    while (r <= rMax + 1e-9) {
+        val inner = max(1, (0.8 * r).toInt())
+        val outer = 2 * inner
+        val innerArea = (2.0 * inner) * (2.0 * inner)
+        val bandArea = (2.0 * outer) * (2.0 * outer) - innerArea
+        val step = max(2, (r / 3).toInt())
+        var y = outer
+        while (y + outer <= h) {
+            var x = outer
+            while (x + outer <= w) {
+                val innerSum = box(x - inner, y - inner, x + inner, y + inner)
+                val band = (box(x - outer, y - outer, x + outer, y + outer) - innerSum) / bandArea
+                val contrast = band - innerSum / innerArea
+                if (contrast > 0) hits += Hit(x, y, r, contrast)
+                x += step
+            }
+            y += step
+        }
+        r *= DARK_DISC_RADIUS_STEP
+    }
+    // strongest first; a hit closer to an accepted one than the larger of their radii is the same disc
+    val out = ArrayList<IrisCircle>()
+    for (hit in hits.sortedByDescending { it.contrast }) {
+        if (out.size >= maxDiscs) break
+        if (out.any { hypot(it.x - hit.x, it.y - hit.y) < max(it.r, hit.r) }) continue
+        out += IrisCircle(hit.x.toDouble(), hit.y.toDouble(), hit.r)
+    }
+    return out
+}
+
 private fun darkBlobs(img: GrayImage, rMin: Double, rMax: Double, maxBlobs: Int): List<IrisCircle> {
     val w = img.width
     val h = img.height

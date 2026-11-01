@@ -305,72 +305,96 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
             glintCenters(glints, img.width, img.height, maxCenters = 8).map { IrisCircle(it.first, it.second, 0.6 * rpMax) }
     if (candidates.isEmpty()) return null
 
-    // 2. coarse pupil search around each blob
-    var bestPupil: PupilHit? = null
+    // 2. coarse pupil search around each candidate; the best hit of each candidate is kept
+    val hits = ArrayList<PupilHit>()
     for (blob in candidates) {
+        var best: PupilHit? = null
         val reach = max(3, (0.3 * blob.r).toInt())
         val rLo = max(rpMin, 0.5 * blob.r)
         val rHi = min(rpMax, max(rLo + 4, 1.6 * blob.r))
         for (dy in -reach..reach step 2) for (dx in -reach..reach step 2) {
             val hit = pupilAt(img, glints, blob.x + dx, blob.y + dy, rLo, rHi, 1.0) ?: continue
-            if (bestPupil == null || hit.score > bestPupil.score) bestPupil = hit
+            if (best == null || hit.score > best.score) best = hit
         }
+        if (best != null) hits += best
     }
-    var pupil = bestPupil ?: return null
-    // 3. refine
-    for (dy in -4..4) for (dx in -4..4) {
-        val cx = pupil.c.x + dx * 0.5
-        val cy = pupil.c.y + dy * 0.5
-        val hit = pupilAt(img, glints, cx, cy, max(rpMin, pupil.c.r - 4), min(rpMax, pupil.c.r + 4), 0.5) ?: continue
-        if (hit.score > pupil.score) pupil = hit
-    }
-    pupil = expandPupil(img, pupil, rpMax)
-    val p = pupil.c
+    if (hits.isEmpty()) return null
 
-    // 4. limbus, in two stages: first the innermost strong edge around the pupil
-    //    center, then the center and radius refined near it. Searching all centers
-    //    at once lets eyelid and eye-corner edges win.
-    // both sides must show the limbus: corners of the eye and eyelid edges usually appear on one side only
     val irisRing = ring(props.irisAnglesToSearch.toList(), 2.5, 2)
-    val riMin = max(riMinAbs, p.r / props.maxPupilIrisRatio)
-    val riMax = min(riMaxAbs, p.r / props.minPupilIrisRatio)
-    if (riMax - riMin < 4) return null
-    var bestIris: EdgeHit? = null
-    var bestCenter = p.x to p.y
-    var quantile = LIMBUS_SECTOR_QUANTILE
-    // if eyelids hide two of the four lateral sectors, accept the edge seen in the other two
-    for (q in listOf(LIMBUS_SECTOR_QUANTILE, 0.67)) {
-        for (dy in -2..2) for (dx in -2..2) {
-            val cx = p.x + dx
-            val cy = p.y + dy
-            val lo = max(riMin, p.r + hypot(dx.toDouble(), dy.toDouble()) + 3)
-            val hit = strongestEdge(img, cx, cy, lo, riMax, 1.0, irisRing, q, LIMBUS_PREFER_INNER, 0.75, 6) ?: continue
-            if (bestIris == null || hit.r < bestIris.r - 2 || (kotlin.math.abs(hit.r - bestIris.r) <= 2 && hit.strength > bestIris.strength)) {
-                bestIris = hit; bestCenter = cx to cy
+
+    /** Steps 3 and 4 for one pupil hit: the refined pupil and the limbus around it, or null when no limbus is found. */
+    fun pupilAndLimbus(start: PupilHit): Triple<PupilHit, IrisCircle, Double>? {
+        var pupil = start
+        // 3. refine
+        for (dy in -4..4) for (dx in -4..4) {
+            val cx = pupil.c.x + dx * 0.5
+            val cy = pupil.c.y + dy * 0.5
+            val hit = pupilAt(img, glints, cx, cy, max(rpMin, pupil.c.r - 4), min(rpMax, pupil.c.r + 4), 0.5) ?: continue
+            if (hit.score > pupil.score) pupil = hit
+        }
+        pupil = expandPupil(img, pupil, rpMax)
+        val p = pupil.c
+
+        // 4. limbus, in two stages: first the innermost strong edge around the pupil
+        //    center, then the center and radius refined near it. Searching all centers
+        //    at once lets eyelid and eye-corner edges win.
+        // both sides must show the limbus: corners of the eye and eyelid edges usually appear on one side only
+        val riMin = max(riMinAbs, p.r / props.maxPupilIrisRatio)
+        val riMax = min(riMaxAbs, p.r / props.minPupilIrisRatio)
+        if (riMax - riMin < 4) return null
+        var bestIris: EdgeHit? = null
+        var bestCenter = p.x to p.y
+        var quantile = LIMBUS_SECTOR_QUANTILE
+        // if eyelids hide two of the four lateral sectors, accept the edge seen in the other two
+        for (q in listOf(LIMBUS_SECTOR_QUANTILE, 0.67)) {
+            for (dy in -2..2) for (dx in -2..2) {
+                val cx = p.x + dx
+                val cy = p.y + dy
+                val lo = max(riMin, p.r + hypot(dx.toDouble(), dy.toDouble()) + 3)
+                val hit = strongestEdge(img, cx, cy, lo, riMax, 1.0, irisRing, q, LIMBUS_PREFER_INNER, 0.75, 6) ?: continue
+                if (bestIris == null || hit.r < bestIris.r - 2 || (kotlin.math.abs(hit.r - bestIris.r) <= 2 && hit.strength > bestIris.strength)) {
+                    bestIris = hit; bestCenter = cx to cy
+                }
+            }
+            if (bestIris != null) {
+                quantile = q; break
             }
         }
-        if (bestIris != null) {
-            quantile = q; break
+        var iris = bestIris ?: return null
+        // lateral arcs fix the horizontal position well but the vertical one only weakly,
+        // so the vertical search range is kept small
+        val off = max(2, (0.12 * iris.r).toInt())
+        val offY = max(2, (0.04 * iris.r).toInt())
+        val r0 = iris.r
+        for (dy in -offY..offY) for (dx in -off..off) {
+            val cx = p.x + dx
+            val cy = p.y + dy
+            val d = hypot(dx.toDouble(), dy.toDouble())
+            val lo = max(max(riMin, r0 * 0.9), p.r + d + 3)
+            val hit = strongestEdge(img, cx, cy, lo, min(riMax, r0 * 1.1), 0.5, irisRing, quantile, null, 0.75, 3) ?: continue
+            if (hit.strength > iris.strength) {
+                iris = hit; bestCenter = cx to cy
+            }
         }
+        val irisCircle = IrisCircle(bestCenter.first, bestCenter.second, iris.r)
+        if (hypot(irisCircle.x - p.x, irisCircle.y - p.y) + p.r >= irisCircle.r) return null
+        return Triple(pupil, irisCircle, iris.strength)
     }
-    var iris = bestIris ?: return null
-    // lateral arcs fix the horizontal position well but the vertical one only weakly,
-    // so the vertical search range is kept small
-    val off = max(2, (0.12 * iris.r).toInt())
-    val offY = max(2, (0.04 * iris.r).toInt())
-    val r0 = iris.r
-    for (dy in -offY..offY) for (dx in -off..off) {
-        val cx = p.x + dx
-        val cy = p.y + dy
-        val d = hypot(dx.toDouble(), dy.toDouble())
-        val lo = max(max(riMin, r0 * 0.9), p.r + d + 3)
-        val hit = strongestEdge(img, cx, cy, lo, min(riMax, r0 * 1.1), 0.5, irisRing, quantile, null, 0.75, 3) ?: continue
-        if (hit.strength > iris.strength) {
-            iris = hit; bestCenter = cx to cy
-        }
+
+    // The best-scoring pupil is usually right. When no limbus fits around it (a dark spectacle
+    // hinge or frame corner can outscore a washed-out pupil seen through glass), the next
+    // distinct candidates are tried, best first.
+    val tried = ArrayList<IrisCircle>()
+    var found: Triple<PupilHit, IrisCircle, Double>? = null
+    for (hit in hits.sortedByDescending { it.score }) {
+        if (tried.size >= MAX_PUPIL_TRIES) break
+        if (tried.any { hypot(it.x - hit.c.x, it.y - hit.c.y) < max(it.r, hit.c.r) }) continue
+        tried += hit.c
+        found = pupilAndLimbus(hit)
+        if (found != null) break
     }
-    val irisCircle = IrisCircle(bestCenter.first, bestCenter.second, iris.r)
-    if (hypot(irisCircle.x - p.x, irisCircle.y - p.y) + p.r >= irisCircle.r) return null
+    val (pupil, irisCircle, irisStrength) = found ?: return null
+    val p = pupil.c
 
     // 5. eyelids
     val upper = if (props.detectEyelids) eyelid(img, p, irisCircle, upper = true) else null
@@ -384,7 +408,7 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
         upperEyelid = upper?.scaled(scale),
         lowerEyelid = lower?.scaled(scale),
         pupilEdge = pupil.edge,
-        irisEdge = iris.strength,
+        irisEdge = irisStrength,
     )
 }
 
@@ -476,6 +500,9 @@ private fun smallReflections(mask: BooleanArray, w: Int, h: Int, maxArea: Int): 
  * Dark connected regions, grown from the darkest seeds. Returns up to [maxBlobs]
  * blobs with plausible pupil size as circles (centroid, equivalent radius).
  */
+/** Distinct pupil candidates tried, best first, until a limbus is found around one. */
+private const val MAX_PUPIL_TRIES = 4
+
 /** Number of pupil candidates taken from [darkDiscs]; compact dark things (a spectacle hinge) can outscore the pupil on contrast, the edge test in pupilAt then decides. */
 private const val DARK_DISC_CANDIDATES = 12
 

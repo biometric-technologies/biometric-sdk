@@ -381,17 +381,18 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
         return Triple(pupil, irisCircle, iris.strength)
     }
 
-    // The best-scoring pupil is usually right. When no limbus fits around it (a dark spectacle
-    // hinge or frame corner can outscore a washed-out pupil seen through glass), the next
-    // distinct candidates are tried, best first.
+    // The best-scoring pupil is usually right, but a dark spectacle hinge or frame corner can
+    // outscore a pupil washed out by the lens, and a weak "limbus" can be found around it too.
+    // The few best distinct candidates are therefore all completed, and the pair with the
+    // strongest pupil score times limbus edge wins: a real eye has both boundaries.
     val tried = ArrayList<IrisCircle>()
     var found: Triple<PupilHit, IrisCircle, Double>? = null
     for (hit in hits.sortedByDescending { it.score }) {
         if (tried.size >= MAX_PUPIL_TRIES) break
         if (tried.any { hypot(it.x - hit.c.x, it.y - hit.c.y) < max(it.r, hit.c.r) }) continue
         tried += hit.c
-        found = pupilAndLimbus(hit)
-        if (found != null) break
+        val result = pupilAndLimbus(hit) ?: continue
+        if (found == null || result.first.score * result.third > found.first.score * found.third) found = result
     }
     val (pupil, irisCircle, irisStrength) = found ?: return null
     val p = pupil.c
@@ -500,7 +501,7 @@ private fun smallReflections(mask: BooleanArray, w: Int, h: Int, maxArea: Int): 
  * Dark connected regions, grown from the darkest seeds. Returns up to [maxBlobs]
  * blobs with plausible pupil size as circles (centroid, equivalent radius).
  */
-/** Distinct pupil candidates tried, best first, until a limbus is found around one. */
+/** Distinct pupil candidates completed with a limbus search; the best pupil-and-limbus pair is kept. */
 private const val MAX_PUPIL_TRIES = 4
 
 /** Number of pupil candidates taken from [darkDiscs]; compact dark things (a spectacle hinge) can outscore the pupil on contrast, the edge test in pupilAt then decides. */
@@ -681,13 +682,11 @@ private fun eyelidInBand(
     val yFrom: Int
     val yTo: Int
     if (upper) {
-        // search down to the top of the pupil: with the brightest-row step below, the dark pupil
-        // would otherwise pull the boundary into the pupil and mask the whole upper iris; an eyelid
-        // that does cover part of the pupil is placed at the pupil edge, which masks the same iris
+        // an eyelid can cover the top of the pupil: search down to the pupil center
         yFrom = max(1, (iris.y - iris.r + guard).toInt())
-        yTo = min(img.height - 2, (p.y - p.r).toInt())
+        yTo = min(img.height - 2, p.y.toInt())
     } else {
-        yFrom = max(1, (p.y + p.r).toInt())
+        yFrom = max(1, p.y.toInt())
         yTo = min(img.height - 2, (iris.y + iris.r - guard).toInt())
     }
     if (yTo - yFrom < 8 || x1 - x0 < 3) return null

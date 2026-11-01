@@ -588,11 +588,13 @@ private fun eyelidInBand(
     val yFrom: Int
     val yTo: Int
     if (upper) {
-        // an eyelid can cover the top of the pupil: search down to the pupil center
+        // search down to the top of the pupil: with the brightest-row step below, the dark pupil
+        // would otherwise pull the boundary into the pupil and mask the whole upper iris; an eyelid
+        // that does cover part of the pupil is placed at the pupil edge, which masks the same iris
         yFrom = max(1, (iris.y - iris.r + guard).toInt())
-        yTo = min(img.height - 2, p.y.toInt())
+        yTo = min(img.height - 2, (p.y - p.r).toInt())
     } else {
-        yFrom = max(1, p.y.toInt())
+        yFrom = max(1, (p.y + p.r).toInt())
         yTo = min(img.height - 2, (iris.y + iris.r - guard).toInt())
     }
     if (yTo - yFrom < 8 || x1 - x0 < 3) return null

@@ -991,26 +991,6 @@ The report contains, in the terms of ISO/IEC 19795-1:
 
 To evaluate other settings, change the property objects at the top of the test.
 
-### Results on CASIA-Iris-Interval
-
-Measured with this benchmark during development of 0.7.0 (commit `ec4b40a`) on
-CASIA-Iris-Interval: 2,639 near-infrared images of 393 eyes, all pairs compared
-(8,585 genuine and about 3.3 million impostor comparisons).
-
-| Measure | Value |
-|---|---|
-| Failure to enroll | 0.11% |
-| Equal error rate | 4.2% |
-| FNMR at FMR 0.1% | 5.0% |
-| FNMR at FMR 0.01% | 5.9% |
-| At the default threshold 0.67 | FNMR 6.8%, FMR 0.002% |
-
-These figures describe one public dataset from one sensor, with every image enrolled
-and compared, including the poorest captures, and no quality screening. They are not an independent evaluation and do not predict the
-accuracy on other sensors or populations. The dataset is distributed by the Institute
-of Automation, Chinese Academy of Sciences (CASIA) under its own license and is not
-part of this repository.
-
 The unit tests in `commonTest` also check the pipeline on synthetic near-infrared eyes
 (`SyntheticIris`): segmentation accuracy, eyelid masking, rotation compensation,
 invariance to brightness and contrast, template serialization, 1:N identification and

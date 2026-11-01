@@ -21,6 +21,7 @@ data class IsoRecord19794_2DataBlock(
     val data: List<IsoRecord19794_2MinutiaData>,
     val extendedData: ByteArray
 ) {
+    /** Minutiae: 5 bytes each (type and x, y, angle), or 6 when the header says they carry a quality byte. */
     private val dataSize = when (header.minutiaeLength) {
         5 -> header.minutiaeNumber * 5
         else -> header.minutiaeNumber * 6
@@ -50,7 +51,14 @@ data class IsoRecord19794_2Header(
     val ridgeEndingType: Int,
     val minutiaeNumber: Int,
 ) {
-    val size = qualityRecords.size * 5 + 1 + 31 // + 1 - length of qualityRecords field
+    /**
+     * Bytes this header takes in a record, without certification blocks: 31 bytes of fixed fields
+     * (representation length 4, capture date and time 9, device technology 1, vendor 2, type 2,
+     * finger position 1, representation number 1, horizontal and vertical resolution 4,
+     * impression type 1, width 2, height 2, minutia length and ridge ending type 1, number of
+     * minutiae 1), 1 byte for the number of quality records and 5 bytes per quality record.
+     */
+    val size = qualityRecords.size * 5 + 1 + 31
 }
 
 data class IsoRecord19794_2MinutiaData(

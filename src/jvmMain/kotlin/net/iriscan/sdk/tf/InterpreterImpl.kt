@@ -3,6 +3,7 @@ package net.iriscan.sdk.tf
 import net.iriscan.sdk.core.io.HashMethod
 import net.iriscan.sdk.io.ResourceIOFactory
 import org.bytedeco.javacpp.BytePointer
+import org.bytedeco.javacpp.Loader
 import org.bytedeco.javacpp.Pointer
 import org.bytedeco.tensorflowlite.BuiltinOpResolver
 import org.bytedeco.tensorflowlite.FlatBufferModel
@@ -24,6 +25,10 @@ internal class InterpreterImpl(
     private val modelLen: Long
 
     init {
+        // Load the TensorFlow Lite natives (and JavaCPP's own) before the first BytePointer below.
+        // Until OpenCV was removed, the face detector happened to load JavaCPP first; without that,
+        // BytePointer fails with UnsatisfiedLinkError on Pointer.allocate.
+        Loader.load(org.bytedeco.tensorflowlite.global.tensorflowlite::class.java)
         val modelBytes =
             if (modelChecksum != null && modelChecksumMethod != null && overrideCacheOnWrongChecksum != null) {
                 ResourceIOFactory.getInstance()

@@ -40,7 +40,7 @@ Iriscan uses the same code in its own products, and the face match of this SDK i
 ## What it does
 
 - Turns a near-infrared photo of an eye into an iris template and compares two templates. The whole iris pipeline is plain Kotlin, so it behaves the same on every platform and needs no native libraries.
-- Finds a face in a photo, turns it into an embedding with a FaceNet-type model and compares embeddings. Uses ML Kit on Android, Apple Vision on iOS and OpenCV on the JVM to find the face, and TensorFlow Lite to run the model.
+- Finds a face in a photo, turns it into an embedding with a FaceNet-type model and compares embeddings. Uses ML Kit on Android, Apple Vision on iOS and the SDK's own Haar cascade detector on the JVM to find the face, and TensorFlow Lite to run the model.
 - Checks that a face is live, not a printed photo or a screen, with a liveness model, and tells which way the head is turned.
 - Reads and writes PNG and BMP images and converts to and from Bitmap, UIImage and BufferedImage.
 - Serializes templates as ISO/IEC 19794-6 (iris image) and ISO/IEC 19794-2 (finger minutiae) records, the formats other biometric systems understand.
@@ -146,7 +146,7 @@ the new ones (see [Matching](#8-matching) for how old templates are handled).
 |---|---|---|---|---|---|
 | Iris extraction, encoding, matching | `iris()` | yes | yes | yes | Common Kotlin, no native dependencies |
 | Iris quality assessment | `iris().quality()` | yes | yes | yes | Components of ISO/IEC 29794-6, not certified |
-| Face extraction | `face().extractor()` | ML Kit | Vision | OpenCV Haar cascades | |
+| Face extraction | `face().extractor()` | ML Kit | Vision | Haar cascades (SDK's own detector) | |
 | Face encoding and matching | `face().encoder()`, `face().matcher()` | TFLite | TFLite | TFLite | You supply the FaceNet-type model |
 | Photo liveness | `face().livenessPhoto()` | TFLite | TFLite | TFLite | You supply the model (DeePixBiS-type) |
 | Position liveness | `face().livenessPosition()` | ML Kit angles | Vision angles | always returns 0 | |
@@ -197,7 +197,7 @@ flowchart TD
         IOSN["CGImageRef wrapper, NSData<br/>Vision framework<br/>TensorFlowLiteObjC 2.12<br/>Ktor Darwin"]
     end
     subgraph jvm["jvmMain"]
-        JVMN["BufferedImage, ByteArray<br/>OpenCV 4.6 Haar cascades<br/>TensorFlow Lite 2.10 via JavaCPP<br/>Ktor OkHttp"]
+        JVMN["BufferedImage, ByteArray<br/>Haar cascades in common Kotlin<br/>TensorFlow Lite 2.10 via JavaCPP<br/>Ktor OkHttp"]
     end
     APP --> FACTORY --> OPS
     OPS --> IO
@@ -231,7 +231,7 @@ the pieces listed below, declared with `expect` in common code (the build enable
 | `InputOutputImageConvertOperations` | `convert(Bitmap)`, `convertToBitmap(Image)` | `convert(CGImageRef)`, `convertToCGImage(Image)`, `nsDataToByteArray`, `byteArrayToNsData` | `convert(BufferedImage)`, `convertToBufferedImage(Image)` |
 | Native image read/write | `BitmapFactory` / `Bitmap.compress` | ImageIO (`CGImageSource`) / raw pixel buffer | `javax.imageio.ImageIO` |
 | `createResourceIO` | assets, classpath, app files, HTTPS; cache in `Context.cacheDir` | app bundle, files, HTTPS; cache in `NSCachesDirectory` | classpath, files, HTTPS; cache in `${java.io.tmpdir}/.biometric-sdk/` |
-| `FaceExtractorInternal` | ML Kit face detection | Vision `VNDetectFaceLandmarksRequest` | OpenCV Haar cascades |
+| `FaceExtractorInternal` | ML Kit face detection | Vision `VNDetectFaceLandmarksRequest` | Haar cascades, `face.impl.haar` |
 | `FaceEncoderInternal`, `FaceLivenessPhotoDetectionInternal` | TFLite `Interpreter` + TFLite Support image ops | `TFLInterpreter` (XNNPACK on) + Core Graphics | JavaCPP TFLite + Java2D |
 | `FaceLivenessPositionDetectionInternal` | ML Kit head Euler angles | Vision yaw and pitch | not implemented, returns 0 |
 
@@ -283,11 +283,10 @@ dependencies {
 </dependency>
 ```
 
-The JVM artifact depends on the JavaCPP builds `org.bytedeco:opencv-platform` 4.6.0 and
-`org.bytedeco:tensorflow-lite-platform` 2.10.0. The `-platform` artifacts include native
-libraries for all supported operating systems, which makes the dependency set large;
-exclude the platforms you do not deploy to if size matters. Iris recognition itself
-does not use these native libraries.
+The JVM artifact depends on the JavaCPP build `org.bytedeco:tensorflow-lite-platform` 2.10.0
+for the face models. The `-platform` artifact includes native libraries for all supported
+operating systems, which makes the dependency set large; exclude the platforms you do not
+deploy to if size matters. Face detection and iris recognition do not use native libraries.
 
 ### iOS (CocoaPods)
 
@@ -808,7 +807,7 @@ Note that for faces `matchScore` is a distance, unlike the iris matcher's simila
 
 ```mermaid
 flowchart LR
-    IMG["NativeImage"] --> DET["Platform face detector<br/>Android: ML Kit<br/>iOS: Vision<br/>JVM: OpenCV Haar cascades"]
+    IMG["NativeImage"] --> DET["Platform face detector<br/>Android: ML Kit<br/>iOS: Vision<br/>JVM: Haar cascades"]
     DET --> CROP["Face crop"]
     CROP --> PRE1["Resize to model input<br/>per-image standardization"]
     PRE1 --> NET["TFLite FaceNet-type model"]
@@ -823,15 +822,34 @@ flowchart LR
 
 | | Android | iOS | JVM |
 |---|---|---|---|
-| Detector | ML Kit face detection, fast mode, all landmarks | Vision `VNDetectFaceLandmarksRequest` | OpenCV Haar cascade `haarcascade_frontalface_alt` on a histogram-equalized grayscale image; minimum face size `max(24, shortSide / 8)` |
+| Detector | ML Kit face detection, fast mode, all landmarks | Vision `VNDetectFaceLandmarksRequest` | Haar cascade `haarcascade_frontalface_alt` (from OpenCV, run by the SDK's own detector) on a histogram-equalized grayscale image; minimum face size `max(24, shortSide / 8)` |
 | Face chosen | Largest | First result | Largest |
 | Requirements | Box strictly inside the image, both eye landmarks found | Box origin inside the image, both eye landmarks found | None beyond a detection |
 | Crop | The detection box | The detection box | Square, 20% margin around the box, resampled to 192 x 192 |
 | Alignment | Rotated only if the eye line is tilted by more than 45 degrees | Rotated only if the eye line is tilted by more than 45 degrees | Eyes found with `haarcascade_eye` in the upper 60% of the face; crop rotated so the eye line is level when the tilt is at most 30 degrees |
 
 On Android the detector is called synchronously (`Tasks.await`), so face operations
-must run off the main thread. The JVM cascades are bundled in the JAR and copied to
-`${java.io.tmpdir}/.biometric-sdk/` on first use.
+must run off the main thread. The JVM cascades are bundled in the JAR and read from there.
+
+### Haar cascade detector (JVM)
+
+Until 0.7 the JVM used OpenCV through JavaCPP to find faces. OpenCV's object detection module
+links GTK 2 on Linux, which current Ubuntu images and most servers do not have, and the SDK then
+failed to start. The JVM now runs the same cascade files with a detector written in common
+Kotlin (`net.iriscan.sdk.face.impl.haar`), with no native code. Because it is common code, the
+planned web and C builds can use it as well.
+
+| Part | File | What it does | OpenCV counterpart |
+|---|---|---|---|
+| Cascade model and reader | `HaarCascade.kt` | Reads OpenCV's cascade XML: window size, stages with their thresholds, weak classifiers (decision stumps or small trees), Haar features as weighted rectangles | `CascadeClassifier::read`, `HaarEvaluator::Feature::read` |
+| Integral image | `HaarDetector.kt`, `IntegralImage` | Sum and sum of squares of any rectangle in four reads | `integral` |
+| Search | `HaarDetector.detect` | Shrinks the image by 1.1 per step, slides the 20 x 20 window (step 2, or 1 above factor 2), normalizes each window by its contrast, runs the stages | `detectMultiScale`, `CascadeClassifierInvoker`, `HaarEvaluator::setWindow` |
+| Grouping | `groupBoxes` | Joins similar hits, drops groups with 3 or fewer hits, drops boxes inside better-supported boxes | `groupRectangles` |
+| Preprocessing | `equalizeHistogram`, `resizeBilinear` | Histogram equalization; bilinear resize with centered pixels | `equalizeHist`, `resize(INTER_LINEAR)` |
+
+The detector follows OpenCV step by step, so it finds the same faces; boxes can differ by a
+pixel or two because of rounding in the resize. Tilted (45 degree) Haar features and the old
+pre-2.4 cascade format are not supported; the cascades the SDK ships use neither.
 
 ### Encoding and matching
 
@@ -1059,7 +1077,7 @@ Main dependencies:
 | common | kotlinx-datetime 0.6.2, kotlinx-coroutines 1.10.2, Napier 2.7.1, Ktor client 3.2.3 |
 | Android | TensorFlow Lite 2.12.0, TensorFlow Lite Support 0.4.3, ML Kit face detection 16.1.5, Ktor OkHttp |
 | iOS | TensorFlowLiteObjC 2.12.0 (CocoaPods), Ktor Darwin |
-| JVM | JavaCPP TensorFlow Lite 2.10.0-1.5.8, JavaCPP OpenCV 4.6.0-1.5.8, Ktor OkHttp |
+| JVM | JavaCPP TensorFlow Lite 2.10.0-1.5.8, Ktor OkHttp |
 
 ## CI and releases
 
@@ -1126,10 +1144,6 @@ Known issues
 
 - Model checksums are not verified on Android and the JVM (the data-loading path of
   `ResourceIO` ignores them); only iOS checks them.
-- On the JVM, the cache directory `${java.io.tmpdir}/.biometric-sdk/` is created only
-  when a face extractor loads its cascades. With `extractor` left `null` in `withFace`,
-  the encoder or liveness model is loaded before any extractor exists, and saving a
-  downloaded model fails if the directory is missing.
 - `writeNativeImage` on iOS returns raw pixels instead of an encoded file, and on Android
   does not support BMP.
 - The common PNG decoder does not read 16-bit or interlaced files.

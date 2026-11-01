@@ -65,7 +65,7 @@ private fun ring(ranges: List<ClosedRange<Double>>, stepDeg: Double, sectorsPerR
 private const val SURROUND_FLOOR = 0.25
 
 /** Score factor of a candidate with an illuminator glint inside. */
-private const val GLINT_BONUS = 1.3
+private const val GLINT_BONUS = 1.6
 
 /** Pupil boundary must be present in at least ~5 of 8 sectors (tolerates eyelids and glints). */
 private const val PUPIL_SECTOR_QUANTILE = 0.375
@@ -296,7 +296,10 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
     //    represented by its centroid and equivalent radius, so the search starts
     //    near the true center even when the darkest pixel is off-center.
     val dark = gaussianBlur(clean, 2.0)
-    val candidates = darkBlobs(dark, rpMin, rpMax, maxBlobs = 12)
+    // plus candidates next to illuminator glints: where the pupil is joined with dark eyelashes
+    // or a dark iris, the dark region does not give its center, the glints do
+    val candidates = darkBlobs(dark, rpMin, rpMax, maxBlobs = 12) +
+            glintCenters(glints, img.width, img.height, maxCenters = 8).map { IrisCircle(it.first, it.second, 0.6 * rpMax) }
     if (candidates.isEmpty()) return null
 
     // 2. coarse pupil search around each blob
@@ -404,6 +407,38 @@ private fun irisReference(img: GrayImage, p: IrisCircle, iris: IrisCircle): Pair
 
 /** Longest to shortest axis ratio of a dark patch that can still be a pupil. */
 private const val MAX_BLOB_ELONGATION = 3.0
+
+/** Centers of the glint components, the largest first. */
+private fun glintCenters(glints: BooleanArray, w: Int, h: Int, maxCenters: Int): List<Pair<Double, Double>> {
+    val seen = BooleanArray(glints.size)
+    val queue = IntArray(glints.size)
+    val found = ArrayList<Triple<Double, Double, Int>>()
+    for (s in glints.indices) {
+        if (!glints[s] || seen[s]) continue
+        var head = 0
+        var tail = 0
+        queue[tail++] = s
+        seen[s] = true
+        var sx = 0.0
+        var sy = 0.0
+        while (head < tail) {
+            val i = queue[head++]
+            val x = i % w
+            val y = i / w
+            sx += x; sy += y
+            for ((nx, ny) in arrayOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1)) {
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
+                val j = ny * w + nx
+                if (glints[j] && !seen[j]) {
+                    seen[j] = true
+                    queue[tail++] = j
+                }
+            }
+        }
+        found += Triple(sx / tail, sy / tail, tail)
+    }
+    return found.sortedByDescending { it.third }.take(maxCenters).map { it.first to it.second }
+}
 
 /** Reflection mask without its large components (spectacle lenses), i.e. the illuminator glints. */
 private fun smallReflections(mask: BooleanArray, w: Int, h: Int, maxArea: Int): BooleanArray {

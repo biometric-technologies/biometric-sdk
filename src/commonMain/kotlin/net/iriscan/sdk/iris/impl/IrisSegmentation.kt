@@ -612,31 +612,35 @@ private fun eyelidInBand(
     var best = 0.0
     var bestIrisSide = 0.0
     var bestSkinSide = 0.0
+    // the iris side is the mean of the w rows next to the boundary; the skin side is the brightest
+    // row within 3w on the other side, because a band of eyelashes (darker than the iris) often
+    // separates the skin from the iris and would hide the step in a plain window mean
     for (k in 1 until rows.size) {
-        var a = 0.0
-        var na = 0
-        var b = 0.0
-        var nb = 0
+        var iris = 0.0
+        var ni = 0
+        var skin = Double.NaN
+        var ns = 0
         for (j in 1..w) {
-            val before = rows.getOrNull(k - j) ?: Double.NaN
-            val after = rows.getOrNull(k + j - 1) ?: Double.NaN
-            if (!before.isNaN()) {
-                a += before; na++
-            }
-            if (!after.isNaN()) {
-                b += after; nb++
+            val v = if (upper) rows.getOrNull(k + j - 1) else rows.getOrNull(k - j)
+            if (v != null && !v.isNaN()) {
+                iris += v; ni++
             }
         }
-        if (na < 2 || nb < 2) continue
-        a /= na
-        b /= nb
-        // upper eyelid: bright skin above, iris below; lower eyelid: iris above, skin below
-        val step = if (upper) a - b else b - a
+        for (j in 1..3 * w) {
+            val v = if (upper) rows.getOrNull(k - j) else rows.getOrNull(k + j - 1)
+            if (v != null && !v.isNaN()) {
+                ns++
+                if (skin.isNaN() || v > skin) skin = v
+            }
+        }
+        if (ni < 2 || ns < 2) continue
+        iris /= ni
+        val step = skin - iris
         if (step > best) {
             best = step
             bestY = (yFrom + k).toDouble()
-            bestIrisSide = if (upper) b else a
-            bestSkinSide = if (upper) a else b
+            bestIrisSide = iris
+            bestSkinSide = skin
         }
     }
     // the eyelid side must be clearly brighter than typical iris, not just the outer iris ring

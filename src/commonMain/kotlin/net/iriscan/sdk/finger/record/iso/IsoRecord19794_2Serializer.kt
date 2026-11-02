@@ -47,7 +47,8 @@ class IsoRecord19794_2Serializer : BiometricRecordSerializer<IsoRecord19794_2> {
         const val MINUTIA_QUALITY_NOT_REPORTED = 254
     }
 
-    override val formatIdentifier: String get() = ""
+    /** "FMR", the signature this serializer reads and the format identifier of the records it returns. */
+    override val formatIdentifier: String get() = FORMAT_IDENTIFIER
     override fun canRead(data: ByteArray): Boolean =
         data.size >= GENERAL_HEADER_BYTES + REPRESENTATION_HEADER_BYTES + EXTENDED_DATA_LENGTH_BYTES &&
                 MemoryStream(data).readStringz(FORMAT_IDENTIFIER.length) == FORMAT_IDENTIFIER

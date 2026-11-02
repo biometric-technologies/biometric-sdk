@@ -61,6 +61,12 @@ private fun ring(ranges: List<ClosedRange<Double>>, stepDeg: Double, sectorsPerR
     )
 }
 
+/** Score factor of a candidate that is dark only along a line (spectacle frame, eyelashes). */
+private const val SURROUND_FLOOR = 0.25
+
+/** Score factor of a candidate with an illuminator glint inside. */
+private const val GLINT_BONUS = 1.6
+
 /** Pupil boundary must be present in at least ~5 of 8 sectors (tolerates eyelids and glints). */
 private const val PUPIL_SECTOR_QUANTILE = 0.375
 
@@ -212,13 +218,60 @@ private fun discMean(img: GrayImage, cx: Double, cy: Double, r: Double): Double 
 
 private class PupilHit(val c: IrisCircle, val edge: Double, val score: Double)
 
-private fun pupilAt(img: GrayImage, cx: Double, cy: Double, rMin: Double, rMax: Double, rStep: Double): PupilHit? {
+private fun pupilAt(
+    img: GrayImage, glints: BooleanArray?, cx: Double, cy: Double, rMin: Double, rMax: Double, rStep: Double,
+): PupilHit? {
     val e = strongestEdge(img, cx, cy, rMin, rMax, rStep, FULL_RING, sectorQuantile = PUPIL_SECTOR_QUANTILE) ?: return null
     val inner = discMean(img, cx, cy, e.r)
     if (inner.isNaN()) return null
     // prefer a dark interior: separates the pupil from the limbus and from eyelash clusters
-    val score = e.strength * (255.0 - inner).coerceAtLeast(0.0) / 255.0
+    val score = e.strength * (255.0 - inner).coerceAtLeast(0.0) / 255.0 *
+            surroundFactor(img, cx, cy, e.r) * glintFactor(glints, img.width, img.height, cx, cy, e.r)
     return PupilHit(IrisCircle(cx, cy, e.r), e.strength, score)
+}
+
+/**
+ * The pupil is darker than its surroundings on every side. A spectacle frame or an
+ * eyelash band is dark along a line, so the surroundings are dark on two opposite
+ * sides. One side may be covered by an eyelid, so the second weakest of the eight
+ * sector contrasts is compared with the median one.
+ */
+private fun surroundFactor(img: GrayImage, cx: Double, cy: Double, r: Double): Double {
+    val sk = FULL_RING.sectors
+    val inside = DoubleArray(sk)
+    val outside = DoubleArray(sk)
+    sectorMeans(img, cx, cy, 0.5 * r, FULL_RING, inside)
+    sectorMeans(img, cx, cy, 1.4 * r, FULL_RING, outside)
+    val c = ArrayList<Double>(sk)
+    for (k in 0 until sk) if (!inside[k].isNaN() && !outside[k].isNaN()) c += outside[k] - inside[k]
+    if (c.size < 6) return SURROUND_FLOOR
+    c.sort()
+    val med = c[c.size / 2]
+    if (med <= 0) return SURROUND_FLOOR
+    return SURROUND_FLOOR + (1 - SURROUND_FLOOR) * (c[1] / med).coerceIn(0.0, 1.0)
+}
+
+/**
+ * Near-infrared illuminators leave small specular glints, almost always inside the
+ * pupil or on its border. A candidate with a small glint inside gets a bonus; large
+ * reflections (spectacle lenses) do not count.
+ */
+private fun glintFactor(glints: BooleanArray?, w: Int, h: Int, cx: Double, cy: Double, r: Double): Double {
+    if (glints == null) return 1.0
+    val rr = 1.1 * r
+    var n = 0
+    var tot = 0
+    val y0 = max(0, (cy - rr).toInt())
+    val y1 = min(h - 1, (cy + rr).toInt())
+    val x0 = max(0, (cx - rr).toInt())
+    val x1 = min(w - 1, (cx + rr).toInt())
+    for (y in y0..y1) for (x in x0..x1) {
+        if (hypot(x - cx, y - cy) > rr) continue
+        tot++
+        if (glints[y * w + x]) n++
+    }
+    if (tot == 0 || n == 0) return 1.0
+    return if (n.toDouble() / tot <= 0.3) GLINT_BONUS else 1.0
 }
 
 /**
@@ -229,6 +282,7 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
     val scale = min(1.0, props.workingSize / minSideFull)
     val small = downscale(full, scale)
     val refl = reflectionMask(small, dilate = 3)
+    val glints = smallReflections(refl, small.width, small.height, maxArea = (0.004 * small.width * small.height).toInt())
     val clean = inpaint(small, refl)
     val img = gaussianBlur(clean, 1.2)
     val minSide = min(img.width, img.height).toDouble()
@@ -242,75 +296,106 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
     //    represented by its centroid and equivalent radius, so the search starts
     //    near the true center even when the darkest pixel is off-center.
     val dark = gaussianBlur(clean, 2.0)
-    val candidates = darkBlobs(dark, rpMin, rpMax, maxBlobs = 8)
+    // plus candidates next to illuminator glints: where the pupil is joined with dark eyelashes
+    // or a dark iris, the dark region does not give its center, the glints do
+    // plus dark discs: the region growing in darkBlobs can swallow the pupil into a larger dark
+    // region reached first (a spectacle frame joined to the eyelashes), the disc detector cannot
+    val candidates = darkBlobs(dark, rpMin, rpMax, maxBlobs = 12) +
+            darkDiscs(dark, rpMin, rpMax, maxDiscs = DARK_DISC_CANDIDATES) +
+            glintCenters(glints, img.width, img.height, maxCenters = 8).map { IrisCircle(it.first, it.second, 0.6 * rpMax) }
     if (candidates.isEmpty()) return null
 
-    // 2. coarse pupil search around each blob
-    var bestPupil: PupilHit? = null
+    // 2. coarse pupil search around each candidate; the best hit of each candidate is kept
+    val hits = ArrayList<PupilHit>()
     for (blob in candidates) {
+        var best: PupilHit? = null
         val reach = max(3, (0.3 * blob.r).toInt())
         val rLo = max(rpMin, 0.5 * blob.r)
         val rHi = min(rpMax, max(rLo + 4, 1.6 * blob.r))
         for (dy in -reach..reach step 2) for (dx in -reach..reach step 2) {
-            val hit = pupilAt(img, blob.x + dx, blob.y + dy, rLo, rHi, 1.0) ?: continue
-            if (bestPupil == null || hit.score > bestPupil.score) bestPupil = hit
+            val hit = pupilAt(img, glints, blob.x + dx, blob.y + dy, rLo, rHi, 1.0) ?: continue
+            if (best == null || hit.score > best.score) best = hit
         }
+        if (best != null) hits += best
     }
-    var pupil = bestPupil ?: return null
-    // 3. refine
-    for (dy in -4..4) for (dx in -4..4) {
-        val cx = pupil.c.x + dx * 0.5
-        val cy = pupil.c.y + dy * 0.5
-        val hit = pupilAt(img, cx, cy, max(rpMin, pupil.c.r - 4), min(rpMax, pupil.c.r + 4), 0.5) ?: continue
-        if (hit.score > pupil.score) pupil = hit
-    }
-    pupil = expandPupil(img, pupil, rpMax)
-    val p = pupil.c
+    if (hits.isEmpty()) return null
 
-    // 4. limbus, in two stages: first the innermost strong edge around the pupil
-    //    center, then the center and radius refined near it. Searching all centers
-    //    at once lets eyelid and eye-corner edges win.
-    // both sides must show the limbus: corners of the eye and eyelid edges usually appear on one side only
     val irisRing = ring(props.irisAnglesToSearch.toList(), 2.5, 2)
-    val riMin = max(riMinAbs, p.r / props.maxPupilIrisRatio)
-    val riMax = min(riMaxAbs, p.r / props.minPupilIrisRatio)
-    if (riMax - riMin < 4) return null
-    var bestIris: EdgeHit? = null
-    var bestCenter = p.x to p.y
-    var quantile = LIMBUS_SECTOR_QUANTILE
-    // if eyelids hide two of the four lateral sectors, accept the edge seen in the other two
-    for (q in listOf(LIMBUS_SECTOR_QUANTILE, 0.67)) {
-        for (dy in -2..2) for (dx in -2..2) {
-            val cx = p.x + dx
-            val cy = p.y + dy
-            val lo = max(riMin, p.r + hypot(dx.toDouble(), dy.toDouble()) + 3)
-            val hit = strongestEdge(img, cx, cy, lo, riMax, 1.0, irisRing, q, LIMBUS_PREFER_INNER, 0.75, 6) ?: continue
-            if (bestIris == null || hit.r < bestIris.r - 2 || (kotlin.math.abs(hit.r - bestIris.r) <= 2 && hit.strength > bestIris.strength)) {
-                bestIris = hit; bestCenter = cx to cy
+
+    /** Steps 3 and 4 for one pupil hit: the refined pupil and the limbus around it, or null when no limbus is found. */
+    fun pupilAndLimbus(start: PupilHit): Triple<PupilHit, IrisCircle, Double>? {
+        var pupil = start
+        // 3. refine
+        for (dy in -4..4) for (dx in -4..4) {
+            val cx = pupil.c.x + dx * 0.5
+            val cy = pupil.c.y + dy * 0.5
+            val hit = pupilAt(img, glints, cx, cy, max(rpMin, pupil.c.r - 4), min(rpMax, pupil.c.r + 4), 0.5) ?: continue
+            if (hit.score > pupil.score) pupil = hit
+        }
+        pupil = expandPupil(img, pupil, rpMax)
+        val p = pupil.c
+
+        // 4. limbus, in two stages: first the innermost strong edge around the pupil
+        //    center, then the center and radius refined near it. Searching all centers
+        //    at once lets eyelid and eye-corner edges win.
+        // both sides must show the limbus: corners of the eye and eyelid edges usually appear on one side only
+        val riMin = max(riMinAbs, p.r / props.maxPupilIrisRatio)
+        val riMax = min(riMaxAbs, p.r / props.minPupilIrisRatio)
+        if (riMax - riMin < 4) return null
+        var bestIris: EdgeHit? = null
+        var bestCenter = p.x to p.y
+        var quantile = LIMBUS_SECTOR_QUANTILE
+        // if eyelids hide two of the four lateral sectors, accept the edge seen in the other two
+        for (q in listOf(LIMBUS_SECTOR_QUANTILE, 0.67)) {
+            for (dy in -2..2) for (dx in -2..2) {
+                val cx = p.x + dx
+                val cy = p.y + dy
+                val lo = max(riMin, p.r + hypot(dx.toDouble(), dy.toDouble()) + 3)
+                val hit = strongestEdge(img, cx, cy, lo, riMax, 1.0, irisRing, q, LIMBUS_PREFER_INNER, 0.75, 6) ?: continue
+                if (bestIris == null || hit.r < bestIris.r - 2 || (kotlin.math.abs(hit.r - bestIris.r) <= 2 && hit.strength > bestIris.strength)) {
+                    bestIris = hit; bestCenter = cx to cy
+                }
+            }
+            if (bestIris != null) {
+                quantile = q; break
             }
         }
-        if (bestIris != null) {
-            quantile = q; break
+        var iris = bestIris ?: return null
+        // lateral arcs fix the horizontal position well but the vertical one only weakly,
+        // so the vertical search range is kept small
+        val off = max(2, (0.12 * iris.r).toInt())
+        val offY = max(2, (0.04 * iris.r).toInt())
+        val r0 = iris.r
+        for (dy in -offY..offY) for (dx in -off..off) {
+            val cx = p.x + dx
+            val cy = p.y + dy
+            val d = hypot(dx.toDouble(), dy.toDouble())
+            val lo = max(max(riMin, r0 * 0.9), p.r + d + 3)
+            val hit = strongestEdge(img, cx, cy, lo, min(riMax, r0 * 1.1), 0.5, irisRing, quantile, null, 0.75, 3) ?: continue
+            if (hit.strength > iris.strength) {
+                iris = hit; bestCenter = cx to cy
+            }
         }
+        val irisCircle = IrisCircle(bestCenter.first, bestCenter.second, iris.r)
+        if (hypot(irisCircle.x - p.x, irisCircle.y - p.y) + p.r >= irisCircle.r) return null
+        return Triple(pupil, irisCircle, iris.strength)
     }
-    var iris = bestIris ?: return null
-    // lateral arcs fix the horizontal position well but the vertical one only weakly,
-    // so the vertical search range is kept small
-    val off = max(2, (0.12 * iris.r).toInt())
-    val offY = max(2, (0.04 * iris.r).toInt())
-    val r0 = iris.r
-    for (dy in -offY..offY) for (dx in -off..off) {
-        val cx = p.x + dx
-        val cy = p.y + dy
-        val d = hypot(dx.toDouble(), dy.toDouble())
-        val lo = max(max(riMin, r0 * 0.9), p.r + d + 3)
-        val hit = strongestEdge(img, cx, cy, lo, min(riMax, r0 * 1.1), 0.5, irisRing, quantile, null, 0.75, 3) ?: continue
-        if (hit.strength > iris.strength) {
-            iris = hit; bestCenter = cx to cy
-        }
+
+    // The best-scoring pupil is usually right, but a dark spectacle hinge or frame corner can
+    // outscore a pupil washed out by the lens, and a weak "limbus" can be found around it too.
+    // The few best distinct candidates are therefore all completed, and the pair with the
+    // strongest pupil score times limbus edge wins: a real eye has both boundaries.
+    val tried = ArrayList<IrisCircle>()
+    var found: Triple<PupilHit, IrisCircle, Double>? = null
+    for (hit in hits.sortedByDescending { it.score }) {
+        if (tried.size >= MAX_PUPIL_TRIES) break
+        if (tried.any { hypot(it.x - hit.c.x, it.y - hit.c.y) < max(it.r, hit.c.r) }) continue
+        tried += hit.c
+        val result = pupilAndLimbus(hit) ?: continue
+        if (found == null || result.first.score * result.third > found.first.score * found.third) found = result
     }
-    val irisCircle = IrisCircle(bestCenter.first, bestCenter.second, iris.r)
-    if (hypot(irisCircle.x - p.x, irisCircle.y - p.y) + p.r >= irisCircle.r) return null
+    val (pupil, irisCircle, irisStrength) = found ?: return null
+    val p = pupil.c
 
     // 5. eyelids
     val upper = if (props.detectEyelids) eyelid(img, p, irisCircle, upper = true) else null
@@ -324,7 +409,7 @@ internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSeg
         upperEyelid = upper?.scaled(scale),
         lowerEyelid = lower?.scaled(scale),
         pupilEdge = pupil.edge,
-        irisEdge = iris.strength,
+        irisEdge = irisStrength,
     )
 }
 
@@ -348,10 +433,140 @@ private fun irisReference(img: GrayImage, p: IrisCircle, iris: IrisCircle): Pair
     return med.toDouble() to max(2.0, 1.4826 * mad)
 }
 
+/** Longest to shortest axis ratio of a dark patch that can still be a pupil. */
+private const val MAX_BLOB_ELONGATION = 3.0
+
+/** Centers of the glint components, the largest first. */
+private fun glintCenters(glints: BooleanArray, w: Int, h: Int, maxCenters: Int): List<Pair<Double, Double>> {
+    val seen = BooleanArray(glints.size)
+    val queue = IntArray(glints.size)
+    val found = ArrayList<Triple<Double, Double, Int>>()
+    for (s in glints.indices) {
+        if (!glints[s] || seen[s]) continue
+        var head = 0
+        var tail = 0
+        queue[tail++] = s
+        seen[s] = true
+        var sx = 0.0
+        var sy = 0.0
+        while (head < tail) {
+            val i = queue[head++]
+            val x = i % w
+            val y = i / w
+            sx += x; sy += y
+            for ((nx, ny) in arrayOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1)) {
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
+                val j = ny * w + nx
+                if (glints[j] && !seen[j]) {
+                    seen[j] = true
+                    queue[tail++] = j
+                }
+            }
+        }
+        found += Triple(sx / tail, sy / tail, tail)
+    }
+    return found.sortedByDescending { it.third }.take(maxCenters).map { it.first to it.second }
+}
+
+/** Reflection mask without its large components (spectacle lenses), i.e. the illuminator glints. */
+private fun smallReflections(mask: BooleanArray, w: Int, h: Int, maxArea: Int): BooleanArray {
+    val out = BooleanArray(mask.size)
+    val seen = BooleanArray(mask.size)
+    val queue = IntArray(mask.size)
+    for (s in mask.indices) {
+        if (!mask[s] || seen[s]) continue
+        var head = 0
+        var tail = 0
+        queue[tail++] = s
+        seen[s] = true
+        while (head < tail) {
+            val i = queue[head++]
+            val x = i % w
+            val y = i / w
+            for ((nx, ny) in arrayOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1)) {
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
+                val j = ny * w + nx
+                if (mask[j] && !seen[j]) {
+                    seen[j] = true
+                    queue[tail++] = j
+                }
+            }
+        }
+        if (tail <= maxArea) for (k in 0 until tail) out[queue[k]] = true
+    }
+    return out
+}
+
 /**
  * Dark connected regions, grown from the darkest seeds. Returns up to [maxBlobs]
  * blobs with plausible pupil size as circles (centroid, equivalent radius).
  */
+/** Distinct pupil candidates completed with a limbus search; the best pupil-and-limbus pair is kept. */
+private const val MAX_PUPIL_TRIES = 4
+
+/** Number of pupil candidates taken from [darkDiscs]; compact dark things (a spectacle hinge) can outscore the pupil on contrast, the edge test in pupilAt then decides. */
+private const val DARK_DISC_CANDIDATES = 12
+
+/** Radii tried by [darkDiscs] grow by this factor from the smallest to the largest pupil. */
+private const val DARK_DISC_RADIUS_STEP = 1.25
+
+/**
+ * Pupil candidates from a dark-disc detector, independent of region growing: positions and radii
+ * where a square of side 1.6 r is darkest compared with the band around it (the square of side
+ * 3.2 r minus the inner one). A pupil is a dark disc in a brighter iris and scores high; a piece
+ * of a spectacle frame or an eyebrow continues into the band and scores low. Only squares fully
+ * inside the image are tried, as a pupil cut by the image border cannot be segmented anyway.
+ * Box sums come from an integral image, so each test costs eight reads.
+ */
+private fun darkDiscs(img: GrayImage, rMin: Double, rMax: Double, maxDiscs: Int): List<IrisCircle> {
+    val w = img.width
+    val h = img.height
+    val stride = w + 1
+    val sums = DoubleArray(stride * (h + 1))
+    for (y in 0 until h) {
+        var row = 0.0
+        for (x in 0 until w) {
+            row += img.data[y * w + x]
+            sums[(y + 1) * stride + x + 1] = sums[y * stride + x + 1] + row
+        }
+    }
+    // sum over x0 <= x < x1, y0 <= y < y1
+    fun box(x0: Int, y0: Int, x1: Int, y1: Int) =
+        sums[y1 * stride + x1] - sums[y0 * stride + x1] - sums[y1 * stride + x0] + sums[y0 * stride + x0]
+
+    class Hit(val x: Int, val y: Int, val r: Double, val contrast: Double)
+    val hits = ArrayList<Hit>()
+    var r = rMin
+    while (r <= rMax + 1e-9) {
+        val inner = max(1, (0.8 * r).toInt())
+        val outer = 2 * inner
+        val innerArea = (2.0 * inner) * (2.0 * inner)
+        val bandArea = (2.0 * outer) * (2.0 * outer) - innerArea
+        val step = max(2, (r / 3).toInt())
+        var y = outer
+        while (y + outer <= h) {
+            var x = outer
+            while (x + outer <= w) {
+                val innerSum = box(x - inner, y - inner, x + inner, y + inner)
+                val band = (box(x - outer, y - outer, x + outer, y + outer) - innerSum) / bandArea
+                val contrast = band - innerSum / innerArea
+                if (contrast > 0) hits += Hit(x, y, r, contrast)
+                x += step
+            }
+            y += step
+        }
+        r *= DARK_DISC_RADIUS_STEP
+    }
+    // strongest first; a hit closer to an accepted one than the larger of their radii is the same disc
+    val out = ArrayList<IrisCircle>()
+    for (hit in hits.sortedByDescending { it.contrast }) {
+        if (out.size >= maxDiscs) break
+        if (out.any { hypot(it.x - hit.x, it.y - hit.y) < max(it.r, hit.r) }) continue
+        out += IrisCircle(hit.x.toDouble(), hit.y.toDouble(), hit.r)
+    }
+    return out
+}
+
 private fun darkBlobs(img: GrayImage, rMin: Double, rMax: Double, maxBlobs: Int): List<IrisCircle> {
     val w = img.width
     val h = img.height
@@ -374,11 +589,22 @@ private fun darkBlobs(img: GrayImage, rMin: Double, rMax: Double, maxBlobs: Int)
         visited[seed] = true
         var sx = 0.0
         var sy = 0.0
-        while (head < tail && tail < maxArea) {
+        var sxx = 0.0
+        var syy = 0.0
+        var sxy = 0.0
+        var area = 0
+        // breadth-first growth: the first maxArea pixels form a compact patch around the seed and
+        // give the candidate; the rest of the region is only marked, so that one large dark region
+        // (a spectacle frame, hair, an eyebrow) does not seed every candidate
+        while (head < tail) {
             val i = queue[head++]
             val x = i % w
             val y = i / w
-            sx += x; sy += y
+            if (area < maxArea) {
+                sx += x; sy += y
+                sxx += x.toDouble() * x; syy += y.toDouble() * y; sxy += x.toDouble() * y
+                area++
+            }
             for ((nx, ny) in arrayOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1)) {
                 if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue
                 val j = ny * w + nx
@@ -388,9 +614,25 @@ private fun darkBlobs(img: GrayImage, rMin: Double, rMax: Double, maxBlobs: Int)
                 }
             }
         }
-        val area = head
         if (area < minArea) continue
-        out += IrisCircle(sx / area, sy / area, sqrt(area / PI))
+        val mx = sx / area
+        val my = sy / area
+        // elongation of the patch: a pupil, even half covered by an eyelid, is not a line
+        val vxx = sxx / area - mx * mx
+        val vyy = syy / area - my * my
+        val vxy = sxy / area - mx * my
+        val tr = vxx + vyy
+        val det = vxx * vyy - vxy * vxy
+        val disc = sqrt(max(0.0, tr * tr / 4 - det))
+        val l1 = tr / 2 + disc
+        val l2 = tr / 2 - disc
+        if (l2 <= 0 || l1 / l2 > MAX_BLOB_ELONGATION * MAX_BLOB_ELONGATION) continue
+        val r = min(rMax, sqrt(area / PI))
+        out += IrisCircle(mx, my, r)
+        // the darkest point of the region, when it is away from the centroid (pupil merged with a dark iris or eyelashes)
+        val seedX = (seed % w).toDouble()
+        val seedY = (seed / w).toDouble()
+        if (hypot(seedX - mx, seedY - my) > 0.3 * r) out += IrisCircle(seedX, seedY, r)
     }
     return out
 }
@@ -464,31 +706,35 @@ private fun eyelidInBand(
     var best = 0.0
     var bestIrisSide = 0.0
     var bestSkinSide = 0.0
+    // the iris side is the mean of the w rows next to the boundary; the skin side is the brightest
+    // row within 3w on the other side, because a band of eyelashes (darker than the iris) often
+    // separates the skin from the iris and would hide the step in a plain window mean
     for (k in 1 until rows.size) {
-        var a = 0.0
-        var na = 0
-        var b = 0.0
-        var nb = 0
+        var iris = 0.0
+        var ni = 0
+        var skin = Double.NaN
+        var ns = 0
         for (j in 1..w) {
-            val before = rows.getOrNull(k - j) ?: Double.NaN
-            val after = rows.getOrNull(k + j - 1) ?: Double.NaN
-            if (!before.isNaN()) {
-                a += before; na++
-            }
-            if (!after.isNaN()) {
-                b += after; nb++
+            val v = if (upper) rows.getOrNull(k + j - 1) else rows.getOrNull(k - j)
+            if (v != null && !v.isNaN()) {
+                iris += v; ni++
             }
         }
-        if (na < 2 || nb < 2) continue
-        a /= na
-        b /= nb
-        // upper eyelid: bright skin above, iris below; lower eyelid: iris above, skin below
-        val step = if (upper) a - b else b - a
+        for (j in 1..3 * w) {
+            val v = if (upper) rows.getOrNull(k - j) else rows.getOrNull(k + j - 1)
+            if (v != null && !v.isNaN()) {
+                ns++
+                if (skin.isNaN() || v > skin) skin = v
+            }
+        }
+        if (ni < 2 || ns < 2) continue
+        iris /= ni
+        val step = skin - iris
         if (step > best) {
             best = step
             bestY = (yFrom + k).toDouble()
-            bestIrisSide = if (upper) b else a
-            bestSkinSide = if (upper) a else b
+            bestIrisSide = iris
+            bestSkinSide = skin
         }
     }
     // the eyelid side must be clearly brighter than typical iris, not just the outer iris ring

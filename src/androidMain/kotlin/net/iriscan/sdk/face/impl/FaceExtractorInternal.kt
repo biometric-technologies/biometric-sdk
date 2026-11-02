@@ -53,7 +53,8 @@ internal actual class FaceExtractorInternal {
             Napier.w(tag = traceId) { "No biometrics were found on provided image" }
             return null
         }
-        val face = result[0]
+        // several faces in the frame: use the largest (closest to the camera)
+        val face = result.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }!!
         val rect = face.boundingBox
         Napier.d(tag = traceId) { "Extracting face from result bbox $rect" }
         if (

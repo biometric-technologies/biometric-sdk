@@ -54,7 +54,7 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
         val newWidth = faceNetModelConfig.inputWidth
         val newHeight = faceNetModelConfig.inputHeight
         Napier.d(tag = debugTraceId) {
-            "Encoding native image [${CGImageGetWidth(image.ptr)},${CGImageGetHeight(image.ptr)}]"
+            "Encoding native image [${CGImageGetWidth(image.cgImage)},${CGImageGetHeight(image.cgImage)}]"
         }
         val pixelCount = newWidth * newHeight
         val data = nativeHeap.allocArray<UByteVar>(pixelCount * 4)
@@ -70,7 +70,7 @@ internal actual class FaceEncoderInternal actual constructor(private val faceNet
             bitmapInfo
         )
         CGContextSetInterpolationQuality(context, kCGInterpolationHigh)
-        CGContextDrawImage(context, CGRectMake(0.0, 0.0, newWidth.toDouble(), newHeight.toDouble()), image.ptr)
+        CGContextDrawImage(context, CGRectMake(0.0, 0.0, newWidth.toDouble(), newHeight.toDouble()), image.cgImage)
         val pixels = FloatArray(pixelCount * 3)
         var i = 0
         for (j in 0 until pixelCount) {

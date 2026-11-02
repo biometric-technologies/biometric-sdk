@@ -21,12 +21,18 @@ interface IrisEncoder {
     fun extractAndEncode(sample: BiometricRecord): DataBytes
 
     /**
-     * Encodes provided extracted image to iris template
+     * Encodes provided extracted image to iris template.
+     * The template is returned even when too little of the texture is valid for the matcher
+     * to compare it; [extractAndEncode] rejects such captures.
      * */
     fun encode(sample: Image): DataBytes
 
     /**
      * Extracts and encodes provided image to iris template
+     * @return the template, or null when no iris is found, less than 20% of the unwrapped iris
+     * is visible, or the template has fewer valid bits than
+     * [IrisMatchProperties.minComparedBitsFraction] of its size: such a template scores 0
+     * against every template, so the eye has to be captured again
      * */
     fun extractAndEncode(sample: Image): DataBytes?
 }

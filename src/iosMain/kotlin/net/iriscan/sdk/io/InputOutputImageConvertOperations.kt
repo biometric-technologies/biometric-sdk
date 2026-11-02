@@ -13,6 +13,11 @@ import platform.Foundation.NSData
  */
 actual interface InputOutputImageConvertOperations {
     fun convert(image: CGImageRef): Image
+
+    /**
+     * A CGImage of [image]. `GRAY` and `BINARY` images give gray and black-and-white pictures; the
+     * masked pixels (-1) of an iris texture come out black, as in the PNG writer.
+     */
     fun convertToCGImage(image: Image): CGImageRef
 
     fun nsDataToByteArray(data: NSData): ByteArray

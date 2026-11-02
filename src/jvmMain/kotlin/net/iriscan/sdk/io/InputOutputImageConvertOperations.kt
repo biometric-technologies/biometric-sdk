@@ -10,6 +10,11 @@ import java.awt.image.BufferedImage
  */
 actual interface InputOutputImageConvertOperations {
     fun convert(image: BufferedImage): Image
+
+    /**
+     * A `TYPE_INT_RGB` copy of [image]. `GRAY` and `BINARY` images give gray and black-and-white
+     * pictures; the masked pixels (-1) of an iris texture come out black, as in the PNG writer.
+     */
     fun convertToBufferedImage(image: Image): BufferedImage
 }
 
@@ -27,8 +32,8 @@ internal actual class InputOutputImageConvertOperationsImpl actual constructor()
 
     override fun convertToBufferedImage(image: Image): BufferedImage {
         val bufferedImage = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
-        val data = image.colors.flatMap { listOf(it.red(), it.green(), it.blue()) }.toIntArray()
-        bufferedImage.raster.setPixels(0, 0, image.width, image.height, data)
+        val pixels = IntArray(image.size) { toRgb(image[it], image.colorType) }
+        bufferedImage.setRGB(0, 0, image.width, image.height, pixels, 0, image.width)
         return bufferedImage
     }
 

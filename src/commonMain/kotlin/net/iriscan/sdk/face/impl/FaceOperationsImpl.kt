@@ -33,24 +33,7 @@ internal class FaceOperationsImpl(val config: FaceConfig) : FaceOperations {
                 }
             }
         }
-    private val matcher: FaceMatcher? =
-        config.matcher?.let {
-            object : FaceMatcher {
-                override fun matches(sample1: DataBytes, sample2: DataBytes): Boolean =
-                    matchFaceNetTemplatesInternal(sample1, sample2) <= config.matcher.threshold
-
-                // false for an empty list whatever the threshold, even an infinite one
-                override fun matchesAny(sample1: DataBytes, samples: List<DataBytes>): Boolean =
-                    samples.isNotEmpty() && matchScoreMin(sample1, samples) <= config.matcher.threshold
-
-                override fun matchScore(sample1: DataBytes, sample2: DataBytes): Double =
-                    matchFaceNetTemplatesInternal(sample1, sample2).toDouble()
-
-                override fun matchScoreMin(sample1: DataBytes, samples: List<DataBytes>): Double =
-                    samples.minOfOrNull { matchFaceNetTemplatesInternal(sample1, it).toDouble() }
-                        ?: NO_TEMPLATE_DISTANCE
-            }
-        }
+    private val matcher: FaceMatcher? = config.matcher?.let { FaceMatcherImpl(it) }
 
     private val livenessPhoto: FaceLivenessPhotoDetection? =
         config.liveness?.photo?.let {

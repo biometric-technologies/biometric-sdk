@@ -1,9 +1,8 @@
 package net.iriscan.sdk.face
 
-import net.iriscan.sdk.FaceConfig
 import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.core.io.asDataBytes
-import net.iriscan.sdk.face.impl.FaceOperationsImpl
+import net.iriscan.sdk.face.impl.FaceMatcherImpl
 import net.iriscan.sdk.testutil.hex
 import kotlin.math.sqrt
 import kotlin.test.Test
@@ -13,9 +12,13 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * The face matcher as an application calls it. It loads no model, so it runs on every platform
- * (a server can compare templates made on phones). Templates are written the way the encoders
- * write them, as big-endian float32 values in hex; the expected distances follow from that byte order.
+ * The face matcher that `face().matcher()` returns. It loads no model, so it runs on every platform
+ * (a server can compare templates made on phones). It is created directly, not through
+ * FaceOperationsImpl: on iOS a test that reaches FaceOperationsImpl also reaches the TensorFlow Lite
+ * code of the encoder, and the test executable then does not link (see [FaceMatcherImpl]). The JVM
+ * test `FaceOperationsTest` checks that FaceOperationsImpl returns this matcher with the configured
+ * threshold. Templates are written the way the encoders write them, as big-endian float32 values in
+ * hex; the expected distances follow from that byte order.
  */
 class FaceMatcherTest {
 
@@ -33,10 +36,7 @@ class FaceMatcherTest {
     /** [-3, -4]: the opposite direction, distance 2. */
     private val opposite = template("C0400000 C0800000")
 
-    private fun operations(threshold: Double): FaceOperations =
-        FaceOperationsImpl(FaceConfig(extractor = null, encoder = null, matcher = FaceMatchProperties(threshold), liveness = null))
-
-    private fun matcher(threshold: Double): FaceMatcher = operations(threshold).matcher()
+    private fun matcher(threshold: Double): FaceMatcher = FaceMatcherImpl(FaceMatchProperties(threshold))
 
     @Test
     fun distancesOfReferenceTemplates() {
@@ -80,16 +80,5 @@ class FaceMatcherTest {
         assertFailsWith<IllegalArgumentException> { m.matchesAny(probe, listOf(near, threeValues)) }
         // six bytes are not a whole number of float32 values
         assertFailsWith<IllegalArgumentException> { m.matches(probe, template("40400000 4080")) }
-    }
-
-    @Test
-    fun theMatcherWorksWithoutTheModels() {
-        val face = operations(1.0)
-        assertTrue(face.matcher().matches(probe, longer))
-        val error = assertFailsWith<IllegalStateException> { face.encoder() }
-        assertEquals("Please initialize SDK with face encoder", error.message)
-        assertFailsWith<IllegalStateException> { face.extractor() }
-        assertFailsWith<IllegalStateException> { face.livenessPhoto() }
-        assertFailsWith<IllegalStateException> { face.livenessPosition() }
     }
 }

@@ -848,6 +848,12 @@ identical directions, `sqrt(2)` for orthogonal ones, 2 for opposite ones. Normal
 in the matcher keeps distances comparable for models without a final L2 layer.
 Templates of different lengths cause an `IllegalArgumentException`.
 
+`FaceMatchProperties` accepts thresholds from 0 to 2 and throws an
+`IllegalArgumentException` for any other value: above 2 every pair of faces would
+match, below 0 none would. SDK versions before 0.7 compared the embeddings without
+normalizing them, so with a model that has no final L2 layer, a threshold chosen
+with those versions has to be calibrated again.
+
 ### Photo liveness
 
 The photo liveness check is written for a DeePixBiS-type model: the face crop is

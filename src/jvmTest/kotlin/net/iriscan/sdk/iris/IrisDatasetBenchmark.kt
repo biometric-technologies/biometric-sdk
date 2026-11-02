@@ -110,11 +110,18 @@ class IrisDatasetBenchmark {
         }
     }
 
+    /** Gray files are read from the raster: getRGB would brighten them (Java treats gray as linear, 20 becomes 79). */
     private fun readGray(f: File): Image? {
         val img = ImageIO.read(f) ?: return null
         val w = img.width
         val h = img.height
         val colors = IntArray(w * h)
+        if (img.colorModel.colorSpace.type == java.awt.color.ColorSpace.TYPE_GRAY) {
+            val shift = (img.sampleModel.getSampleSize(0) - 8).coerceAtLeast(0)
+            img.raster.getSamples(0, 0, w, h, 0, colors)
+            if (shift > 0) for (i in colors.indices) colors[i] = colors[i] shr shift
+            return Image(w, h, ImageColorType.GRAY, colors)
+        }
         for (y in 0 until h) for (x in 0 until w) {
             val rgb = img.getRGB(x, y)
             val r = (rgb shr 16) and 0xFF

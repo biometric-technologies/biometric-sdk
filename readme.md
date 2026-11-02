@@ -799,7 +799,7 @@ devices.
 | `face().encoder().extractAndEncode(nativeImage)` | `DataBytes?` | Extract with alignment, then encode |
 | `face().matcher().matchScore(t1, t2)` | `Double` | Distance between two embeddings; lower is more similar |
 | `face().matcher().matches(t1, t2)` | `Boolean` | `distance <= threshold` |
-| `face().matcher().matchScoreMin(t, list)` / `matchesAny(t, list)` | `Double` / `Boolean` | Smallest distance to any template in the list |
+| `face().matcher().matchScoreMin(t, list)` / `matchesAny(t, list)` | `Double` / `Boolean` | Smallest distance to any template in the list; `Double.POSITIVE_INFINITY` and `false` for an empty list |
 | `face().livenessPhoto().score(nativeImage)` / `validate(...)` | `Double` / `Boolean` | Liveness score of a face crop; valid if `score > threshold` |
 | `face().livenessPhoto().extractAndScore(...)` / `extractAndValidate(...)` | `Double` / `Boolean?` | Extract the face first (no alignment); `-1.0` or `null` when no face is found |
 | `face().livenessPosition().detectPosition(nativeImage)` | `Int` | 0 straight, 1 left, 2 right, 3 top, 4 bottom |

@@ -6,6 +6,15 @@ import net.iriscan.sdk.core.io.asByteArray
 import kotlin.math.sqrt
 
 /**
+ * Distance to the closest template when there is none, as for an empty list in
+ * [net.iriscan.sdk.face.FaceMatcher.matchScoreMin]: the minimum over no distances. It lies above
+ * every real distance (at most 2), so it passes no threshold. It is returned rather than thrown
+ * because an application may compare a face before anyone is enrolled, and on iOS an exception
+ * from a call without `@Throws` terminates the app.
+ */
+internal const val NO_TEMPLATE_DISTANCE = Double.POSITIVE_INFINITY
+
+/**
  * @author Slava Gornostal
  *
  * Euclidean distance between L2-normalized face embeddings (0 = identical,

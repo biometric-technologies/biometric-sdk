@@ -3,6 +3,8 @@ package net.iriscan.sdk
 import io.github.aakira.napier.Napier
 import net.iriscan.sdk.face.FaceOperations
 import net.iriscan.sdk.face.impl.FaceOperationsImpl
+import net.iriscan.sdk.finger.FingerOperations
+import net.iriscan.sdk.finger.impl.FingerOperationsImpl
 import net.iriscan.sdk.io.InputOutputOperations
 import net.iriscan.sdk.io.InputOutputOperationsImpl
 import net.iriscan.sdk.iris.IrisOperations
@@ -17,6 +19,7 @@ interface BiometricSdkOperations {
     fun qualityControl(): QualityControlOperations
     fun iris(): IrisOperations
     fun face(): FaceOperations
+    fun finger(): FingerOperations
 }
 
 /**
@@ -29,6 +32,7 @@ internal class BiometricSdkOperationsImpl(
 
     private val ioOperations = InputOutputOperationsImpl()
     private val irisOperations = config.iris?.let { IrisOperationsImpl(it) }
+    private val fingerOperations = config.finger?.let { FingerOperationsImpl(it) }
 
     /**
      * Face is set up apart from iris. It loads native libraries (OpenCV and TensorFlow Lite on the
@@ -48,6 +52,9 @@ internal class BiometricSdkOperationsImpl(
 
     override fun iris(): IrisOperations =
         irisOperations ?: throw IllegalStateException("Please initialize SDK with iris first")
+
+    override fun finger(): FingerOperations =
+        fingerOperations ?: throw IllegalStateException("Please initialize SDK with finger first")
 
     override fun face(): FaceOperations {
         val result = faceOperations ?: throw IllegalStateException("Please initialize SDK with face first")

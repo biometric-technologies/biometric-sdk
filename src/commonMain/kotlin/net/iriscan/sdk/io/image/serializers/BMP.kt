@@ -2,6 +2,7 @@ package net.iriscan.sdk.io.image.serializers
 
 import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.image.ImageColorType
+import net.iriscan.sdk.core.image.toRgb
 import net.iriscan.sdk.core.io.MemoryStream
 import net.iriscan.sdk.core.io.buildBytes
 import net.iriscan.sdk.io.exception.IOException
@@ -153,12 +154,6 @@ internal object BMP : ImageSerializer {
             for (x in 0 until image.width) write24LE(toRgb(image[x, y], image.colorType))
             writeBytes(padding)
         }
-    }
-
-    private fun toRgb(color: Int, type: ImageColorType): Int = when (type) {
-        ImageColorType.RGB -> color and 0xFFFFFF
-        ImageColorType.GRAY -> color.coerceIn(0, 255).let { (it shl 16) or (it shl 8) or it }
-        ImageColorType.BINARY -> if (color != 0) 0xFFFFFF else 0
     }
 
     /** Bytes per stored row: the pixels rounded up to a multiple of 4 bytes. */

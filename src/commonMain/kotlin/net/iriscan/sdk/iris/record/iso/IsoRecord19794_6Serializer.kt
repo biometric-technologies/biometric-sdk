@@ -42,7 +42,8 @@ class IsoRecord19794_6Serializer : BiometricRecordSerializer<IsoRecord19794_6> {
         const val RANGE_FAILED = 1
     }
 
-    override val formatIdentifier: String get() = ""
+    /** "IIR", the signature this serializer reads and the format identifier of the records it returns. */
+    override val formatIdentifier: String get() = FORMAT_IDENTIFIER
     override fun canRead(data: ByteArray): Boolean =
         data.size >= GENERAL_HEADER_BYTES + REPRESENTATION_HEADER_BYTES &&
                 MemoryStream(data).readStringz(FORMAT_IDENTIFIER.length) == FORMAT_IDENTIFIER

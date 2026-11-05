@@ -1,6 +1,8 @@
 package net.iriscan.sdk.io.record
 
 import kotlinx.datetime.Instant
+import net.iriscan.sdk.core.record.BiometricRecord
+import net.iriscan.sdk.core.record.BiometricType
 import net.iriscan.sdk.finger.record.iso.CertificationRecord
 import net.iriscan.sdk.finger.record.iso.IsoRecord19794_2
 import net.iriscan.sdk.finger.record.iso.IsoRecord19794_2DataBlock
@@ -12,6 +14,10 @@ import net.iriscan.sdk.finger.record.iso.MINUTIA_TYPE
 import net.iriscan.sdk.finger.record.iso.QualityRecord
 import net.iriscan.sdk.finger.record.iso.getMinutia
 import net.iriscan.sdk.finger.record.iso.setMinutia
+import net.iriscan.sdk.io.exception.IOException
+import net.iriscan.sdk.io.exception.UnknownFormatException
+import net.iriscan.sdk.io.image.ImageFixtures
+import net.iriscan.sdk.io.record.impl.InputOutputRecordOperationsImpl
 import net.iriscan.sdk.iris.record.iso.CompressionHistory
 import net.iriscan.sdk.iris.record.iso.DeviceTechnology
 import net.iriscan.sdk.iris.record.iso.EyeLabel
@@ -28,10 +34,13 @@ import net.iriscan.sdk.iris.record.iso.Range
 import net.iriscan.sdk.iris.record.iso.VerticalOrientation
 import net.iriscan.sdk.iris.record.iso.getProperty
 import net.iriscan.sdk.iris.record.iso.setProperty
+import net.iriscan.sdk.testutil.hex
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class IsoRecordSerializerTest {
@@ -215,5 +224,93 @@ class IsoRecordSerializerTest {
         val iris = IsoRecord19794_6Serializer().write(irisRecord)
         assertFalse(IsoRecord19794_2Serializer().canRead(iris))
         assertFalse(IsoRecord19794_6Serializer().canRead(ByteArray(10)))
+    }
+
+    // ---- io().readRecord and io().writeRecord
+
+    private val io = InputOutputRecordOperationsImpl()
+
+    /**
+     * The right eye of [irisRecord], with 4 placeholder image bytes, as a record of its own. Written
+     * out field by field from the 2011 layout, not by the serializer.
+     */
+    private val irisReference = hex(
+        "49495200 30323000 0000004D 0001 00 01" + // "IIR", version "020", 77 bytes, 1 representation, not certified, 1 eye
+            "0000003D 07EA 0A 1F 0C 22 38 0315" + // representation of 61 bytes, captured 2026-10-31 12:34:56.789 UTC
+            "01 1234 5678 01 57 0101 0202" + // CMOS/CCD, vendor, device type; 1 quality block: score 87, algorithm vendor, algorithm
+            "0001 01 03 0E 46" + // representation 1, right eye, cropped, PNG; flipped horizontally, base vertically, lossless
+            "0280 01E0 08 0000 FFFF FFFF" + // 640 x 480, 8 bits, range unassigned, roll angle and its uncertainty undefined
+            "012C 0154 00DC 0104 00C8 00DC" + // iris centre x 300..340, y 220..260, diameter 200..220
+            "00000004 01020304", // image length, image
+    )
+
+    /** One finger with the two [minutiae], written out field by field from the 2011 layout. */
+    private val fingerReference = hex(
+        "464D5200 30333000 00000042 0001 00" + // "FMR", version "030", 66 bytes, 1 representation, not certified
+            "00000033 07EA 0A 1F 0C 22 38 0315" + // representation of 51 bytes, captured 2026-10-31 12:34:56.789 UTC
+            "01 0A0B 0C0D 01 3C 0101 0202" + // device technology, vendor, device type; 1 quality block: score 60, algorithm vendor, algorithm
+            "02 00 00C5 00C5 00 01F4 0226" + // finger 2, representation 0, 197 x 197 pixels per cm, impression 0, 500 x 550
+            "61 02" + // minutiae of 6 bytes (with quality), ridge ending type 1; 2 minutiae
+            "4064 00C8 2D 50" + // type 1 at x 100, y 200, angle 45, quality 80
+            "BFFF 0000 FF 64" + // type 2 at x 16383, y 0, angle 255, quality 100
+            "0000", // no extended data
+    )
+
+    @Test
+    fun readRecordReadsIrisImageRecords() {
+        val record = assertIs<IsoRecord19794_6>(io.readRecord(irisReference))
+        assertEquals("IIR", record.formatIdentifier)
+        assertEquals("020", record.formatVersion)
+        val image = record.data.single()
+        assertEquals(irisHeader(EyeLabel.SUBJECT_EYE_LABEL_RIGHT, listOf(QualityBlock(87, 0x0101, 0x0202))), image.header)
+        assertContentEquals(byteArrayOf(1, 2, 3, 4), image.image)
+    }
+
+    @Test
+    fun readRecordReadsFingerMinutiaeRecords() {
+        val record = assertIs<IsoRecord19794_2>(io.readRecord(fingerReference))
+        assertEquals("FMR", record.formatIdentifier)
+        assertEquals("030", record.formatVersion)
+        val finger = record.data.single()
+        assertEquals(fingerBlock(6, minutiae, ByteArray(0)).header, finger.header)
+        assertEquals(minutiae, finger.data)
+        assertContentEquals(ByteArray(0), finger.extendedData)
+    }
+
+    @Test
+    fun writeRecordGivesBackTheBytesThatWereRead() {
+        assertContentEquals(irisReference, io.writeRecord(io.readRecord(irisReference)))
+        assertContentEquals(fingerReference, io.writeRecord(io.readRecord(fingerReference)))
+    }
+
+    @Test
+    fun readRecordRejectsDataOfOtherFormats() {
+        assertFailsWith<UnknownFormatException> { io.readRecord(ByteArray(0)) }
+        assertFailsWith<UnknownFormatException> { io.readRecord(hex(ImageFixtures.PNG_GRAY)) }
+    }
+
+    @Test
+    fun readRecordReportsARecordThatIsCutShort() {
+        assertFailsWith<IOException> { io.readRecord(irisReference.copyOf(irisReference.size - 1)) }
+        assertFailsWith<IOException> { io.readRecord(fingerReference.copyOf(fingerReference.size - 1)) }
+    }
+
+    @Test
+    fun writeRecordRejectsOtherRecords() {
+        val appRecord = object : BiometricRecord {
+            override val formatIdentifier = "IIR" // the iris identifier on a class the SDK does not know
+            override val formatVersion = "020"
+            override val type = BiometricType.IRIS
+            override val certificationFlag: Byte = 0
+        }
+        assertFailsWith<UnknownFormatException> { io.writeRecord(appRecord) }
+        // the serializer would write an empty signature, which readRecord does not recognize
+        assertFailsWith<UnknownFormatException> { io.writeRecord(irisRecord.copy(formatIdentifier = "")) }
+    }
+
+    @Test
+    fun serializersNameTheFormatIdentifierOfTheirRecords() {
+        assertEquals("IIR", IsoRecord19794_6Serializer().formatIdentifier)
+        assertEquals("FMR", IsoRecord19794_2Serializer().formatIdentifier)
     }
 }

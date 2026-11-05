@@ -151,7 +151,7 @@ the new ones (see [Matching](#8-matching) for how old templates are handled).
 | Photo liveness | `face().livenessPhoto()` | TFLite | TFLite | TFLite | You supply the model (DeePixBiS-type) |
 | Position liveness | `face().livenessPosition()` | ML Kit angles | Vision angles | always returns 0 | |
 | Image I/O | `io()` | yes | yes | yes | PNG and BMP in common code |
-| ISO/IEC 19794-6 and 19794-2 records | serializer classes | yes | yes | yes | Not registered in `io().readRecord()` |
+| ISO/IEC 19794-6 and 19794-2 records | `io().readRecord()`, `io().writeRecord()`, serializer classes | yes | yes | yes | 2011 layouts |
 | Fingerprint extraction and matching | none | no | no | no | Only the record format exists |
 | Generic quality control | `qualityControl()` | no | no | no | Throws `NotImplementedError` |
 
@@ -205,6 +205,7 @@ flowchart TD
     OPS --> FACE
     IRIS --> CORE
     IO --> CORE
+    IO --> ISO
     APP -.->|"used directly"| ISO
     FACE --> RES
     FACE -.->|"expect / actual"| ANDR
@@ -921,7 +922,7 @@ face module (`Bitmap`, `CGImageRef` wrapper, `BufferedImage`).
 | `readNativeImage(dataBytes)` | Decode with the platform decoder (any format the platform supports) |
 | `writeNativeImage(nativeImage, format)` | Android: PNG or JPEG (quality 90), BMP not supported. JVM: PNG, JPEG, BMP via ImageIO. iOS: returns the raw 32-bit pixel buffer regardless of `format` |
 | `convert(...)`, `convertTo...(...)` | Conversion between `Image` and the platform image, listed in [Architecture](#how-platform-code-is-split) |
-| `readRecord(bytes)`, `writeRecord(record)` | Record I/O through registered serializers; no serializer is registered yet, so both throw `UnknownFormatException` |
+| `readRecord(bytes)`, `writeRecord(record)` | Read and write ISO/IEC 19794-6 iris image and 19794-2 finger minutiae records (see below); anything else throws `UnknownFormatException` |
 
 The common PNG decoder reads non-interlaced 8-bit images of every color type (grayscale,
 grayscale with alpha, RGB, RGB with alpha, palette), all five row filters and image data
@@ -937,7 +938,10 @@ or top-down; an 8-bit bitmap with a gray palette becomes a `GRAY` image. It writ
 
 ### ISO/IEC biometric records
 
-The record serializers are public classes that can be used directly:
+`io().readRecord(bytes)` recognizes both formats by their signature and returns an
+`IsoRecord19794_6` or an `IsoRecord19794_2`; `io().writeRecord(record)` writes them back. A
+record to write must carry its format's identifier (`IIR` or `FMR`), as read records do. The
+serializers are public classes that can also be used directly:
 
 ```kotlin
 val serializer = IsoRecord19794_6Serializer()
@@ -1097,7 +1101,6 @@ Not implemented
 
 - `qualityControl()` and the `BiometricRecord` overloads of the iris API throw
   `NotImplementedError`.
-- `io().readRecord()` and `io().writeRecord()` have no registered serializers.
 - Fingerprints are limited to the ISO/IEC 19794-2 record format: there is no
   fingerprint extraction or matching.
 - Position liveness is not implemented on the JVM.
@@ -1115,6 +1118,10 @@ Known issues
 - The common PNG decoder does not read 16-bit or interlaced files.
 - The 19794-6 range field (camera to eye distance) is kept only as "unassigned",
   "failed" or "measured": a measured distance is read back as `RANGE_OVERFLOW`.
+- The record serializers, and so `io().readRecord()`, recognize a record by its signature
+  alone. A record of the 2005 editions (version `010` for iris images, ` 20` for finger
+  minutiae) is read with the 2011 layout: this throws, or gives a record without images or
+  fingers when its capture device field is 0.
 - Face extraction differs between platforms (choice of face, crop margin, alignment),
   so embeddings of the same photo are not guaranteed to be identical across platforms.
 - `BiometricSdkFactory.initialize` cannot reconfigure an initialized SDK, and debug

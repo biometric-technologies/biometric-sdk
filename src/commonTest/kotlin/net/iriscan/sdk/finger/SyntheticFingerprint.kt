@@ -113,6 +113,23 @@ class SyntheticFingerprint(private val carrier: Carrier, planted: List<Minutia> 
      * SDK: radians in [0, π), counterclockwise from the x axis as seen on the image.
      */
     fun ridgeOrientation(x: Double, y: Double): Double {
+        val (gx, gy) = phaseGradient(x, y)
+        // the gradient angle is measured with y down; the ridges run across it, mirrored to y up
+        return (PI / 2 - atan2(gy, gx)).mod(PI)
+    }
+
+    /**
+     * Ridge period at (x, y), pixels: the distance over which the phase grows by one cycle, 2π over the length of
+     * its gradient. The carrier's [Carrier.period] everywhere without minutiae; around a minutia its spiral makes the
+     * ridges denser on one side and sparser on the other.
+     */
+    fun ridgePeriod(x: Double, y: Double): Double {
+        val (gx, gy) = phaseGradient(x, y)
+        return 2 * PI / hypot(gx, gy)
+    }
+
+    /** Gradient (d/dx, d/dy) of [phase]: the carrier's, plus p · (−(y − yₙ), x − xₙ) / r² for each spiral. */
+    private fun phaseGradient(x: Double, y: Double): Pair<Double, Double> {
         var (gx, gy) = carrier.gradient(x, y)
         for (m in minutiae) {
             val dx = x - m.x
@@ -122,8 +139,7 @@ class SyntheticFingerprint(private val carrier: Carrier, planted: List<Minutia> 
             gx -= m.polarity * dy / r2
             gy += m.polarity * dx / r2
         }
-        // the gradient angle is measured with y down; the ridges run across it, mirrored to y up
-        return (PI / 2 - atan2(gy, gx)).mod(PI)
+        return Pair(gx, gy)
     }
 
     /** How a print is captured: its area, gray levels and noise. */

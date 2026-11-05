@@ -89,6 +89,12 @@ kotlin {
                 implementation(kotlin("test"))
             }
         }
+        jvmTest {
+            dependencies {
+                // Reference implementation for the fingerprint port; tests only.
+                implementation("com.machinezoo.sourceafis:sourceafis:3.18.1")
+            }
+        }
         jvmMain {
             dependencies {
                 implementation("org.bytedeco:tensorflow-lite:2.10.0-1.5.8")

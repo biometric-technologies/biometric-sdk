@@ -2,7 +2,7 @@
 
 # Biometric SDK
 
-An open-source library that recognizes people by their iris or their face, and runs on Android, iOS and the JVM from one Kotlin code base. You give it an eye image or a selfie; it gives you a compact template and a yes-or-no answer to "is this the same person?". Nothing leaves the device or your server: there is no cloud call anywhere in the code.
+An open-source library that recognizes people by their iris, face or fingerprint, and runs on Android, iOS and the JVM from one Kotlin code base. You give it an eye image, a selfie or a fingerprint scan; it gives you a compact template and a yes-or-no answer to "is this the same person?". Nothing leaves the device or your server: there is no cloud call anywhere in the code.
 
 Iriscan uses the same code in its own products, and the face match of this SDK is the one that runs inside [Inji Wallet](https://docs.iriscan.com/mosip), the reference wallet of MOSIP, the open-source national ID platform.
 
@@ -25,6 +25,7 @@ Iriscan uses the same code in its own products, and the face match of this SDK i
 - [Initialization and configuration](#initialization-and-configuration)
 - [Iris recognition](#iris-recognition)
 - [Face recognition and liveness](#face-recognition-and-liveness)
+- [Fingerprint recognition](#fingerprint-recognition)
 - [Model loading and caching](#model-loading-and-caching)
 - [Images, records and I/O](#images-records-and-io)
 - [Accuracy and the benchmark](#accuracy-and-the-benchmark)
@@ -41,6 +42,7 @@ Iriscan uses the same code in its own products, and the face match of this SDK i
 
 - Turns a near-infrared photo of an eye into an iris template and compares two templates. The whole iris pipeline is plain Kotlin, so it behaves the same on every platform and needs no native libraries.
 - Finds a face in a photo, turns it into an embedding with a FaceNet-type model and compares embeddings. Uses ML Kit on Android, Apple Vision on iOS and OpenCV on the JVM to find the face, and TensorFlow Lite to run the model.
+- Turns a fingerprint image from a contact scanner into a minutiae template and compares templates, with a port of SourceAFIS that scores exactly like the Java original.
 - Checks that a face is live, not a printed photo or a screen, with a liveness model, and tells which way the head is turned.
 - Reads and writes PNG and BMP images and converts to and from Bitmap, UIImage and BufferedImage.
 - Serializes templates as ISO/IEC 19794-6 (iris image) and ISO/IEC 19794-2 (finger minutiae) records, the formats other biometric systems understand.
@@ -132,6 +134,8 @@ The pictures above are real output of the iris pipeline on the iris photo from o
 
 **Face.** The platform's face detector finds the largest face and its eyes, the SDK crops and aligns it, and a FaceNet-type neural network turns the crop into a list of numbers called an embedding. Faces of the same person give embeddings that are close together; the matcher measures the distance and compares it with the threshold. The network is a TensorFlow Lite file that you choose and host, so you can replace it with a better one without touching the SDK. The liveness check runs a second model on the face crop and returns a score; the position check uses the detector's head angles.
 
+**Fingerprint.** A fingerprint is recognized by its minutiae, the points where ridges end or split. The SDK finds the print in the image, follows the ridges and the valleys between them, thins them to lines and takes the ends of the lines as minutiae, with their position, direction and type. Two templates are compared by looking for a constellation of minutiae that the two prints share, with the same distances and angles between them. The engine is a port of SourceAFIS, an open-source algorithm by Robert Važan.
+
 **Templates, not photos.** A template is small, cannot be turned back into the image, and is what you keep in your database. The ISO/IEC 19794 serializers let you exchange records with other vendors' software instead of being locked in.
 
 Every configuration parameter, the iris pipeline step by step and the per-platform notes are in the sections below; integration guides for the cloud and the edge service are on [docs.iriscan.com](https://docs.iriscan.com/).
@@ -152,7 +156,7 @@ the new ones (see [Matching](#8-matching) for how old templates are handled).
 | Position liveness | `face().livenessPosition()` | ML Kit angles | Vision angles | always returns 0 | |
 | Image I/O | `io()` | yes | yes | yes | PNG and BMP in common code |
 | ISO/IEC 19794-6 and 19794-2 records | serializer classes | yes | yes | yes | Not registered in `io().readRecord()` |
-| Fingerprint extraction and matching | none | no | no | no | Only the record format exists |
+| Fingerprint extraction and matching | `finger()` | yes | yes | yes | Common Kotlin port of SourceAFIS 3.18.1; contact-scanner images |
 | Generic quality control | `qualityControl()` | no | no | no | Throws `NotImplementedError` |
 
 ## Architecture
@@ -164,7 +168,7 @@ The project is a single Gradle module with the source sets `commonMain`,
 
 | Package | Contents |
 |---|---|
-| `net.iriscan.sdk` | `BiometricSdkFactory` (entry point), `BiometricSdkConfig` and its builder, `IrisConfig`, `FaceConfig`, `BiometricSdkOperations` |
+| `net.iriscan.sdk` | `BiometricSdkFactory` (entry point), `BiometricSdkConfig` and its builder, `IrisConfig`, `FaceConfig`, `FingerConfig`, `BiometricSdkOperations` |
 | `core.image` | `Image` (width, height, color type, `IntArray` of pixels), `ImageColorType` (`RGB`, `GRAY`, `BINARY`), color helpers, `Point`, `Circle`, and the platform type `NativeImage` |
 | `core.io` | Platform byte type `DataBytes`, `HashMethod` (`CRC32`, `SHA256`), and internal pure-Kotlin `MemoryStream`, CRC-32, Adler-32, SHA-256 and zlib/DEFLATE |
 | `core.record` | `BiometricRecord` interface and `BiometricType` |
@@ -172,6 +176,7 @@ The project is a single Gradle module with the source sets `commonMain`,
 | `iris` | Public iris API (`IrisOperations`, `IrisExtractor`, `IrisEncoder`, `IrisMatcher`, `IrisQualityAssessor`, property classes) and `iris.impl` with the algorithm |
 | `iris.record.iso` | `IsoRecord19794_6` model and `IsoRecord19794_6Serializer` |
 | `face` | Public face API (`FaceOperations`, `FaceExtractor`, `FaceEncoder`, `FaceMatcher`, `FaceLivenessPhotoDetection`, `FaceLivenessPositionDetection`, property classes); `face.impl` holds the common alignment and matching code and the `expect` declarations of the platform parts |
+| `finger` | Public fingerprint API (`FingerOperations`, `FingerEncoder`, `FingerMatcher`, property classes); `finger.impl` holds the template format and `finger.impl.afis` the SourceAFIS port |
 | `finger.record.iso` | `IsoRecord19794_2` model and `IsoRecord19794_2Serializer` |
 | `qc` | `QualityControlOperations` interface (not implemented) |
 | `tf` | `Interpreter` interface; each platform has its own TensorFlow Lite `InterpreterImpl` |
@@ -186,6 +191,7 @@ flowchart TD
         IO["io()<br/>image codecs, conversion, records"]
         IRIS["iris()<br/>segmentation, encoding, matching, quality"]
         FACE["face()<br/>operations, alignment, matcher"]
+        FINGER["finger()<br/>minutiae and matching, SourceAFIS port"]
         RES["ResourceIO<br/>model loading and cache"]
         CORE["core<br/>Image, MemoryStream, ZLib, CRC-32, SHA-256"]
         ISO["iris.record.iso, finger.record.iso<br/>ISO/IEC 19794-6 and 19794-2"]
@@ -203,7 +209,9 @@ flowchart TD
     OPS --> IO
     OPS --> IRIS
     OPS --> FACE
+    OPS --> FINGER
     IRIS --> CORE
+    FINGER --> CORE
     IO --> CORE
     APP -.->|"used directly"| ISO
     FACE --> RES
@@ -324,15 +332,15 @@ iOS as the CocoaPods framework, so iOS apps should use the pod.
 The SDK is a process-wide singleton:
 
 1. `BiometricSdkFactory.configBuilder()` returns a `BiometricSdkConfigBuilder`.
-2. `withContext(...)`, `withIris(...)` and `withFace(...)` select what to initialize;
+2. `withContext(...)`, `withIris(...)`, `withFace(...)` and `withFinger(...)` select what to initialize;
    `build()` returns a `BiometricSdkConfig`.
 3. `BiometricSdkFactory.initialize(config)` creates the operations. Only the first call
    has an effect: later calls return without changing the configuration.
 4. `BiometricSdkFactory.getInstance()` returns `BiometricSdkOperations`, or `null` (and
    logs an error) before initialization.
 
-`BiometricSdkOperations` exposes `io()`, `iris()`, `face()` and `qualityControl()`.
-`iris()` and `face()` throw `IllegalStateException` when the modality was not configured,
+`BiometricSdkOperations` exposes `io()`, `iris()`, `face()`, `finger()` and `qualityControl()`.
+`iris()`, `face()` and `finger()` throw `IllegalStateException` when the modality was not configured,
 and each face sub-operation throws the same exception when its own properties were not
 given. `io()` is always available.
 
@@ -866,6 +874,87 @@ angle is ML Kit's `headEulerAngleZ`, which is in-plane rotation; on iOS it is Vi
 pitch, which Vision reports from iOS 15 (earlier versions are treated as 0). The JVM
 implementation always returns `0`.
 
+## Fingerprint recognition
+
+The fingerprint engine is a Kotlin port of [SourceAFIS](https://sourceafis.machinezoo.com/)
+3.18.1 by Robert Važan (Apache License 2.0, see
+[NOTICE.md](src/commonMain/kotlin/net/iriscan/sdk/finger/impl/afis/NOTICE.md)). It is plain
+common Kotlin, so it runs the same on Android, iOS and the JVM, and it gives the same minutiae
+and the same scores as SourceAFIS for Java, to the last bit.
+
+### API
+
+```kotlin
+BiometricSdkFactory.initialize(
+    BiometricSdkFactory.configBuilder()
+        .withFinger() // 500 dpi images, threshold 40
+        .build()
+)
+val finger = BiometricSdkFactory.getInstance()!!.finger()
+
+// DataBytes (ByteArray on Android and the JVM, NSData on iOS), or null if no minutiae were found
+val enrolled = finger.encoder().extractAndEncode(scan) ?: error("No fingerprint found")
+val probe = finger.encoder().extractAndEncode(otherScan, dpi = 1000.0) ?: error("No fingerprint found")
+
+finger.matcher().score(enrolled, probe)         // 0 = no similarity; 40 = FMR 0.01%
+finger.matcher().matches(enrolled, probe)       // score >= threshold
+finger.matcher().identify(probe, gallery)       // FingerMatch(index, score), or null below the threshold
+```
+
+| Interface | Methods |
+|---|---|
+| `FingerEncoder` | `extractAndEncode(image)`, `extractAndEncode(image, dpi)` |
+| `FingerMatcher` | `score`, `matches`, `matchesAny`, `identify` |
+
+### Input images
+
+The engine expects images from a contact fingerprint scanner or a scanned ink print: dark ridges
+on a light background, at a known resolution. Gray images are read as they are; color images are
+turned to gray as the average of the three channels. Images at other resolutions than 500 dpi are
+scaled to 500 dpi first, so give the real `dpi`: a wrong value lowers the scores. Photos of a
+finger taken with a phone camera are a different problem (contactless fingerprints) and are not
+supported.
+
+### How it works
+
+1. **Segmentation.** The image is split into 15-pixel blocks; blocks with too little contrast,
+   absolute or compared with the rest of the image, are background.
+2. **Ridges.** Each block is equalized, the ridge orientation is estimated from pixel
+   neighborhoods, the image is smoothed along the ridges and compared with a smoothing across
+   them, which gives a binary image of ridges and one of valleys.
+3. **Skeletons.** Both binary images are thinned to one-pixel lines and traced into graphs.
+   Filters remove dots, pores, short tails and fragments, and join ridges broken by small gaps.
+4. **Minutiae.** Ends of ridge lines are ridge endings; ends of valley lines are bifurcations.
+   Minutiae near the edge of the print and dense clouds of minutiae are dropped, and at most 100
+   are kept.
+5. **Matching.** Every minutia is linked to its nearest neighbors by edges (length and two
+   angles). Edges of the two templates that agree are used as starting pairs; from each, the
+   matcher grows a tree of paired minutiae along agreeing edges and scores it by the number of
+   pairs, the supporting edges, the minutia types and the distance and angle errors. The best
+   tree gives the score, shaped so that 40 corresponds to a false match rate of 0.01%.
+
+### Configuration reference
+
+| Property | Default | Meaning |
+|---|---|---|
+| `FingerEncodeProperties.dpi` | `500.0` | Resolution of images passed without a `dpi` (20-20000) |
+| `FingerMatchProperties.threshold` | `40.0` | Score from which templates count as the same finger. On the SourceAFIS scale, 40 is FMR 0.01%, 30 is 0.1% and 20 is 1% |
+
+### Template format
+
+Big-endian: `"FP1"`, version `1`, width and height of the image after scaling to 500 dpi
+(2 bytes each), the number of minutiae (2 bytes), then 9 bytes per minutia: x and y (2 bytes
+each, signed), direction (4-byte IEEE float, radians from 0 to 2π) and type (`0` ridge ending,
+`1` bifurcation). A template with 40 minutiae takes 370 bytes. The minutiae are stored in
+matching order, so a template read back gives exactly the same scores.
+
+### Tests
+
+`FingerTest` (common) checks matching, 1:N search, serialization and input checks on synthetic
+fingerprints. `SourceAfisParityTest` (JVM) runs SourceAFIS for Java 3.18.1 next to the port on
+synthetic prints at 420, 500 and 640 dpi, with noise, shifts and rotations, and requires
+identical scores for every pair.
+
 ## Model loading and caching
 
 Face and liveness models are loaded through `ResourceIO`, which is initialized by
@@ -1090,6 +1179,8 @@ Accuracy and standards
   the layout of ISO/IEC 19794-6 and 19794-2, without conformance testing.
 - The iris pipeline is tuned for near-infrared images; visible-light iris images have
   not been evaluated. There is no iris presentation attack detection.
+- The fingerprint engine is made for contact-scanner images. Phone camera photos of a
+  finger are not supported, and there is no fingerprint presentation attack detection.
 - 1:N iris identification is an exhaustive linear scan in memory. It has no index, so
   very large galleries need partitioning or a dedicated service.
 
@@ -1098,8 +1189,8 @@ Not implemented
 - `qualityControl()` and the `BiometricRecord` overloads of the iris API throw
   `NotImplementedError`.
 - `io().readRecord()` and `io().writeRecord()` have no registered serializers.
-- Fingerprints are limited to the ISO/IEC 19794-2 record format: there is no
-  fingerprint extraction or matching.
+- Fingerprint templates use the SDK's own format; they are not yet exported to or read
+  from ISO/IEC 19794-2 minutiae records.
 - Position liveness is not implemented on the JVM.
 
 Known issues
@@ -1146,6 +1237,8 @@ For pull requests:
 ## License
 
 GNU General Public License v3.0, see [LICENSE.md](LICENSE.md). You can use, change and redistribute the SDK freely as long as your software is open source under the same terms. For a closed-source product, Iriscan offers a [commercial license](https://www.iriscan.com/commercial-license).
+
+The fingerprint engine in `finger.impl.afis` is a port of SourceAFIS for Java, Copyright Robert Važan and contributors, Apache License 2.0; see its [NOTICE.md](src/commonMain/kotlin/net/iriscan/sdk/finger/impl/afis/NOTICE.md).
 
 ## Contact
 

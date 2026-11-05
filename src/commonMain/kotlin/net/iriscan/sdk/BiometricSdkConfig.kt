@@ -5,6 +5,8 @@ import net.iriscan.sdk.face.FaceEncodeProperties
 import net.iriscan.sdk.face.FaceExtractProperties
 import net.iriscan.sdk.face.FaceLivenessDetectionProperties
 import net.iriscan.sdk.face.FaceMatchProperties
+import net.iriscan.sdk.finger.FingerEncodeProperties
+import net.iriscan.sdk.finger.FingerMatchProperties
 import net.iriscan.sdk.iris.IrisEncodeProperties
 import net.iriscan.sdk.iris.IrisExtractProperties
 import net.iriscan.sdk.iris.IrisMatchProperties
@@ -16,13 +18,23 @@ import kotlin.jvm.JvmOverloads
  *
  * SDK configuration object
  */
-class BiometricSdkConfig(val context: PlatformContext?, val iris: IrisConfig?, val face: FaceConfig?)
+class BiometricSdkConfig @JvmOverloads constructor(
+    val context: PlatformContext?,
+    val iris: IrisConfig?,
+    val face: FaceConfig?,
+    val finger: FingerConfig? = null,
+)
 
 data class IrisConfig @JvmOverloads constructor(
     val extractor: IrisExtractProperties,
     val encoder: IrisEncodeProperties,
     val matcher: IrisMatchProperties,
     val quality: IrisQualityProperties = IrisQualityProperties(),
+)
+
+data class FingerConfig(
+    val encoder: FingerEncodeProperties = FingerEncodeProperties(),
+    val matcher: FingerMatchProperties = FingerMatchProperties(),
 )
 
 data class FaceConfig(
@@ -36,6 +48,7 @@ class BiometricSdkConfigBuilder {
     private var context: PlatformContext? = null
     private var irisConfig: IrisConfig? = null
     private var faceConfig: FaceConfig? = null
+    private var fingerConfig: FingerConfig? = null
 
     fun withContext(context: PlatformContext): BiometricSdkConfigBuilder {
         this.context = context
@@ -68,6 +81,15 @@ class BiometricSdkConfigBuilder {
         return this
     }
 
+    @JvmOverloads
+    fun withFinger(
+        encoder: FingerEncodeProperties = FingerEncodeProperties(),
+        matcher: FingerMatchProperties = FingerMatchProperties(),
+    ): BiometricSdkConfigBuilder {
+        this.fingerConfig = FingerConfig(encoder, matcher)
+        return this
+    }
+
     fun build(): BiometricSdkConfig =
-        BiometricSdkConfig(this.context, this.irisConfig, this.faceConfig)
+        BiometricSdkConfig(this.context, this.irisConfig, this.faceConfig, this.fingerConfig)
 }

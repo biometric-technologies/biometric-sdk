@@ -61,7 +61,7 @@ publishing {
                 developer {
                     id.set("sgornostal")
                     name.set("Slava Gornostal")
-                    email.set("slava@iriscan.net")
+                    email.set("info@iriscan.com")
                 }
             }
             scm {

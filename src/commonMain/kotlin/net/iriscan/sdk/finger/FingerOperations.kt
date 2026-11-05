@@ -20,36 +20,30 @@ interface FingerOperations {
 /**
  * Turns a fingerprint image into a template.
  *
+ * The template is an ISO/IEC 19794-2:2005 finger minutiae record: one finger view, 500 dpi
+ * (197 pixels per cm), the format other fingerprint systems and biometric-converter read.
+ *
  * Works on images from contact scanners or scanned ink prints, with dark ridges on a light
  * background. Phone camera photos of a finger are not supported.
  */
 interface FingerEncoder {
     /**
      * Template from an image at the resolution set in [FingerEncodeProperties.dpi].
-     * @return the template, or null if no minutiae were found
+     * @return the ISO/IEC 19794-2:2005 record, or null if no minutiae were found
      */
     fun extractAndEncode(sample: Image): DataBytes?
 
     /**
      * Template from an image of the given resolution, in dots per inch (20-20000).
-     * @return the template, or null if no minutiae were found
+     * @return the ISO/IEC 19794-2:2005 record, or null if no minutiae were found
      */
     fun extractAndEncode(sample: Image, dpi: Double): DataBytes?
-
-    /**
-     * The template as an ISO/IEC 19794-2:2005 finger minutiae record (one finger view, 500 dpi),
-     * the format other fingerprint systems and biometric-converter read. Angles are rounded to
-     * 1.4 degrees, so the record matches slightly lower than the template it came from.
-     */
-    fun toIso19794_2(template: DataBytes): DataBytes
-
-    /**
-     * Templates from an ISO/IEC 19794-2 record of version 2005 or 2011, one per finger view,
-     * ready for [FingerMatcher].
-     */
-    fun fromIso19794_2(record: DataBytes): List<DataBytes>
 }
 
+/**
+ * Compares templates: ISO/IEC 19794-2 records of version 2005 or 2011, from this SDK or from
+ * other systems. A record with several finger views is compared by its first view.
+ */
 interface FingerMatcher {
     /**
      * Similarity of two templates. 0 means no similarity; there is no upper bound.

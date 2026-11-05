@@ -1,7 +1,9 @@
 package net.iriscan.sdk.finger
 
 import net.iriscan.sdk.finger.impl.FingerIso
-import net.iriscan.sdk.finger.impl.FingerTemplate
+import net.iriscan.sdk.finger.impl.afis.FeatureExtractor
+import net.iriscan.sdk.finger.impl.afis.SearchTemplate
+import net.iriscan.sdk.finger.impl.fingerMatrix
 import net.iriscan.sdk.finger.impl.encodeFinger
 import net.iriscan.sdk.finger.impl.fingerScore
 import kotlin.math.PI
@@ -18,13 +20,16 @@ class FingerIsoTest {
     private val finger = SyntheticFinger(1)
     private val enrolled = assertNotNull(encodeFinger(finger.capture(), 500.0))
     private val probe = assertNotNull(encodeFinger(finger.capture(dx = 9, dy = -6, angle = 0.12, noise = 12.0), 500.0))
-    private val iso = FingerIso.export2005(FingerTemplate.fromBytes(enrolled))
+    private val iso = enrolled
+
+    /** The template before it is written: SourceAFIS directions in full float precision. */
+    private val native = SearchTemplate(FeatureExtractor.extract(fingerMatrix(finger.capture()), 500.0))
 
     private fun u16(bytes: ByteArray, at: Int) = (bytes[at].toInt() and 0xFF shl 8) or (bytes[at + 1].toInt() and 0xFF)
 
     @Test
     fun exportHasTheIso2005Layout() {
-        val template = FingerTemplate.fromBytes(enrolled)
+        val template = native
         val n = template.minutiae.size
         assertContentEquals("FMR\u0000 20\u0000".encodeToByteArray(), iso.copyOf(8))
         assertEquals(30 + 6 * n, iso.size)
@@ -47,7 +52,7 @@ class FingerIsoTest {
 
     @Test
     fun importedRecordKeepsTheMinutiaeAndStillMatches() {
-        val original = FingerTemplate.fromBytes(enrolled)
+        val original = native
         val imported = FingerIso.import(iso).single()
         assertEquals(original.minutiae.size, imported.minutiae.size)
         val step = 2 * PI / 256
@@ -58,32 +63,31 @@ class FingerIsoTest {
             }
             assertTrue(match, "minutia ${m.x},${m.y} lost")
         }
-        val score = fingerScore(probe, FingerTemplate.toBytes(imported))
+        val score = fingerScore(probe, iso)
         assertTrue(score >= 40, "imported record scored $score")
     }
 
     @Test
     fun iso2011RecordReadsLikeThe2005One() {
         val record2011 = to2011(iso)
-        assertContentEquals(
-            FingerTemplate.toBytes(FingerIso.import(iso).single()),
-            FingerTemplate.toBytes(FingerIso.import(record2011).single()),
-        )
+        assertContentEquals(iso, FingerIso.export2005(FingerIso.import(record2011).single()))
+        assertEquals(fingerScore(probe, iso), fingerScore(probe, record2011))
     }
 
     @Test
     fun everyFingerViewBecomesATemplate() {
-        val other = FingerIso.export2005(FingerTemplate.fromBytes(assertNotNull(encodeFinger(SyntheticFinger(2).capture(), 500.0))))
+        val other = assertNotNull(encodeFinger(SyntheticFinger(2).capture(), 500.0))
         val views = FingerIso.import(twoViews(iso, other))
         assertEquals(2, views.size)
-        assertContentEquals(FingerTemplate.toBytes(FingerIso.import(other).single()), FingerTemplate.toBytes(views[1]))
+        assertContentEquals(other, FingerIso.export2005(views[1]))
+        assertEquals(fingerScore(probe, iso), fingerScore(probe, twoViews(iso, other)), "first view is matched")
     }
 
     @Test
     fun otherDataIsRejected() {
-        assertFailsWith<IllegalArgumentException> { FingerIso.import(enrolled) }
+        assertFailsWith<IllegalArgumentException> { FingerIso.import("not a record".encodeToByteArray()) }
         assertFailsWith<IllegalArgumentException> { FingerIso.import(iso.copyOf(iso.size - 7)) }
-        assertTrue(!FingerIso.isIsoRecord(enrolled) && FingerIso.isIsoRecord(iso))
+        assertTrue(!FingerIso.isIsoRecord(ByteArray(40)) && FingerIso.isIsoRecord(iso))
     }
 
     /** Two views of the 2005 records [a] and [b], which must share the general header values. */

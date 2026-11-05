@@ -10,7 +10,8 @@ import net.iriscan.sdk.finger.impl.afis.SearchTemplate
 import net.iriscan.sdk.finger.impl.afis.jround
 
 /**
- * ISO/IEC 19794-2 finger minutiae records, as SourceAFIS writes and reads them.
+ * ISO/IEC 19794-2 finger minutiae records, the template format of the finger module, written and
+ * read as SourceAFIS writes and reads them.
  *
  * Export writes the 2005 version, the one most systems read, byte for byte as
  * SourceAFIS `FingerprintCompatibility.exportTemplates(ISO_19794_2_2005, ...)`: one finger view,

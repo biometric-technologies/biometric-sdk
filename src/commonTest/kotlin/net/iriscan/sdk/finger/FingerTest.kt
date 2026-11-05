@@ -5,10 +5,11 @@ import net.iriscan.sdk.core.image.Image
 import net.iriscan.sdk.core.image.ImageColorType
 import net.iriscan.sdk.core.io.asDataBytes
 import net.iriscan.sdk.finger.impl.FingerOperationsImpl
-import net.iriscan.sdk.finger.impl.FingerTemplate
+import net.iriscan.sdk.finger.impl.FingerIso
 import net.iriscan.sdk.finger.impl.encodeFinger
 import net.iriscan.sdk.finger.impl.fingerScore
 import net.iriscan.sdk.finger.impl.identifyFinger
+import net.iriscan.sdk.finger.impl.readFinger
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -53,18 +54,18 @@ class FingerTest {
     }
 
     @Test
-    fun templateSurvivesSerialization() {
-        val restored = FingerTemplate.toBytes(FingerTemplate.fromBytes(enrolled))
-        assertContentEquals(enrolled, restored)
-        assertEquals(fingerScore(enrolled, sameFinger), fingerScore(restored, sameFinger))
+    fun templateIsAnIsoRecordThatReadsBackUnchanged() {
+        assertTrue(FingerIso.isIsoRecord(enrolled))
+        // At 197 pixels per cm, reading and writing again keeps every value for images below about 650 pixels.
+        assertContentEquals(enrolled, FingerIso.export2005(readFinger(enrolled)))
     }
 
     @Test
     fun brokenTemplatesAreRejected() {
         assertFailsWith<IllegalArgumentException> { fingerScore(byteArrayOf(1, 2, 3), enrolled) }
         assertFailsWith<IllegalArgumentException> { fingerScore(enrolled.copyOf(enrolled.size - 1), enrolled) }
-        val wrongType = enrolled.copyOf().also { it[it.size - 1] = 7 }
-        assertFailsWith<IllegalArgumentException> { fingerScore(wrongType, enrolled) }
+        val noViews = enrolled.copyOf(24).also { it[11] = 24; it[10] = 0; it[22] = 0 }
+        assertFailsWith<IllegalArgumentException> { fingerScore(noViews, enrolled) }
     }
 
     @Test

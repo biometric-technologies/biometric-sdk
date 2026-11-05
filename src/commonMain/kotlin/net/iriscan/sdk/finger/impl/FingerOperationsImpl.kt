@@ -22,12 +22,6 @@ internal class FingerOperationsImpl(private val config: FingerConfig) : FingerOp
 
         override fun extractAndEncode(sample: Image, dpi: Double): DataBytes? =
             encodeFinger(sample, dpi)?.asDataBytes()
-
-        override fun toIso19794_2(template: DataBytes): DataBytes =
-            FingerIso.export2005(FingerTemplate.fromBytes(template.asByteArray())).asDataBytes()
-
-        override fun fromIso19794_2(record: DataBytes): List<DataBytes> =
-            FingerIso.import(record.asByteArray()).map { FingerTemplate.toBytes(it).asDataBytes() }
     }
 
     override fun matcher(): FingerMatcher = object : FingerMatcher {
@@ -68,21 +62,25 @@ internal fun encodeFinger(image: Image, dpi: Double): ByteArray? {
     require(image.width > 0 && image.height > 0 && image.size == image.width * image.height) { "Empty or broken image" }
     val template = SearchTemplate(FeatureExtractor.extract(fingerMatrix(image), dpi))
     if (template.minutiae.isEmpty()) return null
-    return FingerTemplate.toBytes(template)
+    return FingerIso.export2005(template)
 }
 
-internal fun fingerScore(template1: ByteArray, template2: ByteArray): Double =
-    MatcherEngine().match(Probe(FingerTemplate.fromBytes(template1)), FingerTemplate.fromBytes(template2))
+/** First finger view of an ISO/IEC 19794-2 record, ready for matching. */
+internal fun readFinger(record: ByteArray): SearchTemplate =
+    FingerIso.import(record).firstOrNull() ?: throw IllegalArgumentException("The record has no finger view")
+
+internal fun fingerScore(record1: ByteArray, record2: ByteArray): Double =
+    MatcherEngine().match(Probe(readFinger(record1)), readFinger(record2))
 
 /** Best match in a gallery: index and score, or null when the gallery is empty. */
 internal fun identifyFinger(probe: ByteArray, gallery: List<ByteArray>): Pair<Int, Double>? {
     if (gallery.isEmpty()) return null
-    val prepared = Probe(FingerTemplate.fromBytes(probe))
+    val prepared = Probe(readFinger(probe))
     val engine = MatcherEngine()
     var bestIndex = -1
     var bestScore = -1.0
     for (i in gallery.indices) {
-        val score = engine.match(prepared, FingerTemplate.fromBytes(gallery[i]))
+        val score = engine.match(prepared, readFinger(gallery[i]))
         if (score > bestScore) {
             bestScore = score
             bestIndex = i

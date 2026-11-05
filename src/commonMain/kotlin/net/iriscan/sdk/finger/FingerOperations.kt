@@ -35,6 +35,19 @@ interface FingerEncoder {
      * @return the template, or null if no minutiae were found
      */
     fun extractAndEncode(sample: Image, dpi: Double): DataBytes?
+
+    /**
+     * The template as an ISO/IEC 19794-2:2005 finger minutiae record (one finger view, 500 dpi),
+     * the format other fingerprint systems and biometric-converter read. Angles are rounded to
+     * 1.4 degrees, so the record matches slightly lower than the template it came from.
+     */
+    fun toIso19794_2(template: DataBytes): DataBytes
+
+    /**
+     * Templates from an ISO/IEC 19794-2 record of version 2005 or 2011, one per finger view,
+     * ready for [FingerMatcher].
+     */
+    fun fromIso19794_2(record: DataBytes): List<DataBytes>
 }
 
 interface FingerMatcher {

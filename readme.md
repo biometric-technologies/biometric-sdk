@@ -899,11 +899,14 @@ val probe = finger.encoder().extractAndEncode(otherScan, dpi = 1000.0) ?: error(
 finger.matcher().score(enrolled, probe)         // 0 = no similarity; 40 = FMR 0.01%
 finger.matcher().matches(enrolled, probe)       // score >= threshold
 finger.matcher().identify(probe, gallery)       // FingerMatch(index, score), or null below the threshold
+
+val record = finger.encoder().toIso19794_2(enrolled)        // ISO/IEC 19794-2:2005 for other systems
+val fromVendor = finger.encoder().fromIso19794_2(isoRecord) // one template per finger view
 ```
 
 | Interface | Methods |
 |---|---|
-| `FingerEncoder` | `extractAndEncode(image)`, `extractAndEncode(image, dpi)` |
+| `FingerEncoder` | `extractAndEncode(image)`, `extractAndEncode(image, dpi)`, `toIso19794_2(template)`, `fromIso19794_2(record)` |
 | `FingerMatcher` | `score`, `matches`, `matchesAny`, `identify` |
 
 ### Input images
@@ -948,12 +951,28 @@ each, signed), direction (4-byte IEEE float, radians from 0 to 2π) and type (`0
 `1` bifurcation). A template with 40 minutiae takes 370 bytes. The minutiae are stored in
 matching order, so a template read back gives exactly the same scores.
 
+### ISO/IEC 19794-2 records
+
+`toIso19794_2` writes the template as an ISO/IEC 19794-2:2005 finger minutiae record, the
+version most systems read: one finger view, 500 dpi (197 pixels per cm), finger quality 100,
+minutia quality 0, no extended data. The bytes are the same as those of SourceAFIS
+`FingerprintCompatibility.exportTemplates(ISO_19794_2_2005, ...)`. Directions are stored in
+256 steps (1.4 degrees), so a record matches slightly lower than the template it came from.
+[biometric-converter](https://github.com/biometric-technologies/biometric-converter) reads
+the record and turns it into ANSI INCITS 378 or the ISO card formats.
+
+`fromIso19794_2` reads records of version 2005 and 2011 from other systems, one template per
+finger view, as SourceAFIS imports them: positions are scaled to 500 dpi, minutiae of type
+"other" become ridge endings, and extended data (ridge counts, cores, deltas) is skipped.
+The resulting templates work with the matcher like any other.
+
 ### Tests
 
-`FingerTest` (common) checks matching, 1:N search, serialization and input checks on synthetic
-fingerprints. `SourceAfisParityTest` (JVM) runs SourceAFIS for Java 3.18.1 next to the port on
+`FingerTest` and `FingerIsoTest` (common) check matching, 1:N search, serialization, ISO
+export and import and input checks on synthetic fingerprints. `SourceAfisParityTest` (JVM) runs SourceAFIS for Java 3.18.1 next to the port on
 synthetic prints at 420, 500 and 640 dpi, with noise, shifts and rotations, and requires
-identical scores for every pair.
+identical scores for every pair, ISO 2005 records identical to the byte, and identical scores
+after importing ISO 2005 and 2011 records.
 
 ## Model loading and caching
 
@@ -1189,8 +1208,8 @@ Not implemented
 - `qualityControl()` and the `BiometricRecord` overloads of the iris API throw
   `NotImplementedError`.
 - `io().readRecord()` and `io().writeRecord()` have no registered serializers.
-- Fingerprint templates use the SDK's own format; they are not yet exported to or read
-  from ISO/IEC 19794-2 minutiae records.
+- Fingerprint records are exported as ISO/IEC 19794-2:2005 only; ANSI INCITS 378 and the
+  card formats go through biometric-converter.
 - Position liveness is not implemented on the JVM.
 
 Known issues

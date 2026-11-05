@@ -22,6 +22,12 @@ internal class FingerOperationsImpl(private val config: FingerConfig) : FingerOp
 
         override fun extractAndEncode(sample: Image, dpi: Double): DataBytes? =
             encodeFinger(sample, dpi)?.asDataBytes()
+
+        override fun toIso19794_2(template: DataBytes): DataBytes =
+            FingerIso.export2005(FingerTemplate.fromBytes(template.asByteArray())).asDataBytes()
+
+        override fun fromIso19794_2(record: DataBytes): List<DataBytes> =
+            FingerIso.import(record.asByteArray()).map { FingerTemplate.toBytes(it).asDataBytes() }
     }
 
     override fun matcher(): FingerMatcher = object : FingerMatcher {

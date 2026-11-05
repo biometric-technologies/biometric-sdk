@@ -21,14 +21,25 @@ internal fun matchFaceNetTemplatesInternal(mask1: DataBytes, mask2: DataBytes, t
     return result
 }
 
+/**
+ * Distance between two templates when one of them has no direction to compare: it is empty, all
+ * its values are zero, or one of its values is not a finite number (NaN or an infinity). Such
+ * templates come from damaged or wrongly decoded bytes (for example float32 values written in the
+ * other byte order), not from a face. The value lies above every distance between two embeddings
+ * (at most 2), so such a template matches no face at any finite threshold, and the closest of
+ * several templates is never one of them. It is returned rather than thrown so that one damaged
+ * template does not abort a comparison with many, and because on iOS an exception from a call
+ * without `@Throws` terminates the app.
+ */
+internal const val NOT_COMPARABLE_DISTANCE = Float.POSITIVE_INFINITY
+
 internal fun embeddingDistance(a: FloatArray, b: FloatArray): Float {
-    var na = 0.0
-    var nb = 0.0
-    for (i in a.indices) {
-        na += a[i] * a[i]; nb += b[i] * b[i]
-    }
-    na = sqrt(na).coerceAtLeast(1e-12)
-    nb = sqrt(nb).coerceAtLeast(1e-12)
+    val na = euclideanLength(a)
+    val nb = euclideanLength(b)
+    // Without this check such an embedding would give NaN (0 / 0, or infinity / infinity): NaN
+    // matches nothing, but it also makes the minimum over several templates NaN, so that none of
+    // them matches.
+    if (!hasDirection(na) || !hasDirection(nb)) return NOT_COMPARABLE_DISTANCE
     var sum = 0.0
     for (i in a.indices) {
         val d = a[i] / na - b[i] / nb
@@ -36,6 +47,23 @@ internal fun embeddingDistance(a: FloatArray, b: FloatArray): Float {
     }
     return sqrt(sum).toFloat()
 }
+
+/**
+ * Euclidean length of [v]. The squares are taken in Double: in Float a value above about 1.8e19
+ * squares to infinity and values below about 1e-22 square to zero, which would give such an
+ * embedding a length of infinity or 0 although it has a direction.
+ */
+private fun euclideanLength(v: FloatArray): Double {
+    var sum = 0.0
+    for (x in v) sum += x.toDouble() * x
+    return sqrt(sum)
+}
+
+/**
+ * False for a length of 0 (no values, or all of them zero) and for one that is not finite (a NaN
+ * or infinite value): such an embedding has no direction.
+ */
+private fun hasDirection(length: Double): Boolean = length > 0.0 && length.isFinite()
 
 /** Big-endian float32 array, as written by the encoders. */
 internal fun toFloatArray(bytes: ByteArray): FloatArray {

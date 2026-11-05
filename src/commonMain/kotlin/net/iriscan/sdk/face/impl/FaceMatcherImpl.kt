@@ -3,7 +3,46 @@ package net.iriscan.sdk.face.impl
 import io.github.aakira.napier.Napier
 import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.core.io.asByteArray
+import net.iriscan.sdk.face.FaceMatchProperties
+import net.iriscan.sdk.face.FaceMatcher
 import kotlin.math.sqrt
+
+/**
+ * The matcher that [FaceOperationsImpl.matcher] returns.
+ *
+ * Comparing templates needs only the threshold and common code, so the matcher is kept apart from
+ * [FaceOperationsImpl], which also creates the platform extractor, encoder and liveness detectors.
+ * On iOS the encoder and the photo liveness detector call TensorFlow Lite through the
+ * TensorFlowLiteObjC pod, and the iOS test executable does not link everything that pod needs: a
+ * common test that created [FaceOperationsImpl] failed to link there (symbols needed by the pod's
+ * `TFLInterpreter` were undefined). The common tests therefore check the matcher through this
+ * class, and [FaceOperationsImpl] is tested on the JVM.
+ */
+internal class FaceMatcherImpl(private val properties: FaceMatchProperties) : FaceMatcher {
+
+    override fun matches(sample1: DataBytes, sample2: DataBytes): Boolean =
+        matchFaceNetTemplatesInternal(sample1, sample2) <= properties.threshold
+
+    // false for an empty list whatever the threshold, even an infinite one
+    override fun matchesAny(sample1: DataBytes, samples: List<DataBytes>): Boolean =
+        samples.isNotEmpty() && matchScoreMin(sample1, samples) <= properties.threshold
+
+    override fun matchScore(sample1: DataBytes, sample2: DataBytes): Double =
+        matchFaceNetTemplatesInternal(sample1, sample2).toDouble()
+
+    override fun matchScoreMin(sample1: DataBytes, samples: List<DataBytes>): Double =
+        samples.minOfOrNull { matchFaceNetTemplatesInternal(sample1, it).toDouble() }
+            ?: NO_TEMPLATE_DISTANCE
+}
+
+/**
+ * Distance to the closest template when there is none, as for an empty list in
+ * [net.iriscan.sdk.face.FaceMatcher.matchScoreMin]: the minimum over no distances. It lies above
+ * every real distance (at most 2), so it passes no threshold. It is returned rather than thrown
+ * because an application may compare a face before anyone is enrolled, and on iOS an exception
+ * from a call without `@Throws` terminates the app.
+ */
+internal const val NO_TEMPLATE_DISTANCE = Double.POSITIVE_INFINITY
 
 /**
  * @author Slava Gornostal

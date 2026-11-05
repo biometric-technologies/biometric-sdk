@@ -6,6 +6,8 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -33,9 +35,9 @@ internal class IrisSegmentation(
     val upperEyelid: Eyelid?,
     /** Lower eyelid boundary, or null when the iris is not covered from below. */
     val lowerEyelid: Eyelid?,
-    /** Strength of the pupil boundary (gray levels per pixel). */
+    /** Strength of the pupil boundary (encoded gray levels per pixel of the working copy, see [srgbEncoded]). */
     val pupilEdge: Double,
-    /** Strength of the limbus boundary (gray levels per pixel). */
+    /** Strength of the limbus boundary (encoded gray levels per pixel of the working copy). */
     val irisEdge: Double,
 )
 
@@ -274,13 +276,60 @@ private fun glintFactor(glints: BooleanArray?, w: Int, h: Int, cx: Double, cy: D
     return if (n.toDouble() / tot <= 0.3) GLINT_BONUS else 1.0
 }
 
+/** sRGB transfer curve (IEC 61966-2-1): linear segment up to this linear level (0..1). */
+private const val SRGB_LINEAR_LIMIT = 0.0031308
+
+/** sRGB transfer curve: slope of the linear segment near black. */
+private const val SRGB_LINEAR_SLOPE = 12.92
+
+/** sRGB transfer curve: exponent of the power segment. */
+private const val SRGB_GAMMA = 2.4
+
+/** sRGB transfer curve: offset of the power segment. */
+private const val SRGB_OFFSET = 0.055
+
+/**
+ * The 256 grey levels encoded with the sRGB curve and rounded: for every level, the value that
+ * BufferedImage.getRGB returns for a TYPE_BYTE_GRAY pixel of that level (checked on JDK 21).
+ */
+private val SRGB_ENCODED_LEVELS = FloatArray(256) { level ->
+    val linear = level / 255.0
+    val encoded = if (linear <= SRGB_LINEAR_LIMIT) SRGB_LINEAR_SLOPE * linear
+    else (1 + SRGB_OFFSET) * linear.pow(1 / SRGB_GAMMA) - SRGB_OFFSET
+    (encoded * 255).roundToInt().toFloat()
+}
+
+/**
+ * [img] with every grey level encoded with the sRGB transfer curve: 20 becomes 79, 64 becomes
+ * 137, 128 becomes 188, black and white stay.
+ *
+ * Why: the segmentation was tuned on CASIA eyes read on the JVM through BufferedImage.getRGB,
+ * which takes the levels of a grey file for linear light and returns them encoded with this
+ * curve. Every grey-level threshold of the search (glints, dark pupil regions, the pupil
+ * darkness, the glint-ring check of [expandPupil], the eyelid steps) is on that scale. Android,
+ * iOS and, since the JVM gray-image fix, the JVM pass the levels stored in the file, whose
+ * mid-tones are darker. On those levels the glint-ring check accepts the limbus of a darker iris
+ * as the edge of a dilated pupil, and the pupil is grown to it.
+ * Fractional levels (BT.601 luma of RGB images) are rounded first, as getRGB works on 8 bits.
+ */
+internal fun srgbEncoded(img: GrayImage): GrayImage = GrayImage(
+    img.width, img.height,
+    FloatArray(img.data.size) { SRGB_ENCODED_LEVELS[img.data[it].roundToInt().coerceIn(0, 255)] },
+)
+
 /**
  * Locates pupil and iris circles. Returns null when no plausible pair is found.
+ *
+ * The search runs on a copy of [full] encoded with [srgbEncoded], the levels its thresholds were
+ * tuned on; the circles and eyelids apply to [full], whose own levels the caller keeps for the
+ * texture, the template and the quality metrics.
  */
 internal fun segmentIris(full: GrayImage, props: IrisExtractProperties): IrisSegmentation? {
     val minSideFull = min(full.width, full.height).toDouble()
     val scale = min(1.0, props.workingSize / minSideFull)
-    val small = downscale(full, scale)
+    // encoded at full resolution and then downscaled, in the order of the JVM pipeline the
+    // thresholds were tuned with, so a grey file gets exactly the working copy it got then
+    val small = downscale(srgbEncoded(full), scale)
     val refl = reflectionMask(small, dilate = 3)
     val glints = smallReflections(refl, small.width, small.height, maxArea = (0.004 * small.width * small.height).toInt())
     val clean = inpaint(small, refl)

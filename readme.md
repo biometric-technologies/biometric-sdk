@@ -847,6 +847,11 @@ The matcher L2-normalizes both embeddings and returns their Euclidean distance: 
 identical directions, `sqrt(2)` for orthogonal ones, 2 for opposite ones. Normalizing
 in the matcher keeps distances comparable for models without a final L2 layer.
 Templates of different lengths cause an `IllegalArgumentException`.
+A template without a direction is not the embedding of a face: an empty one, one whose
+values are all zero, or one with a value that is not a finite number (NaN or an infinity,
+as damaged or wrongly decoded bytes often contain) is at the distance
+`Double.POSITIVE_INFINITY` from every template, so it matches nothing at a finite
+threshold, and `matchScoreMin` and `matchesAny` pass over it.
 
 ### Photo liveness
 

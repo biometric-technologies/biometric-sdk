@@ -65,7 +65,13 @@ jobs:
 
       - name: Coverage summary
         if: always()
-        run: python3 .github/coverage-summary.py build/reports/kover/report.xml >> "$GITHUB_STEP_SUMMARY" || true
+        run: |
+          {
+            echo '### Line coverage by package, lowest first'
+            echo '```'
+            ./gradlew -q koverLog | grep '%' | sort -t: -k2 -n
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY" || true
 
       - uses: actions/upload-artifact@v4
         if: always()

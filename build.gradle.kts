@@ -1,3 +1,6 @@
+import kotlinx.kover.gradle.plugin.dsl.AggregationType
+import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
+import kotlinx.kover.gradle.plugin.dsl.GroupingEntityType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -133,5 +136,21 @@ android {
 tasks.register("printVersion") {
     doLast {
         println("${project.version}")
+    }
+}
+
+// Coverage of the JVM and Android unit tests. `./gradlew koverLog` prints line coverage per
+// package; CI puts it into the job summary, and the HTML report is a CI artifact.
+kover {
+    reports {
+        total {
+            log {
+                onCheck.set(false)
+                groupBy.set(GroupingEntityType.PACKAGE)
+                coverageUnits.set(CoverageUnit.LINE)
+                aggregationForGroup.set(AggregationType.COVERED_PERCENTAGE)
+                format.set("<entity>: <value>%")
+            }
+        }
     }
 }

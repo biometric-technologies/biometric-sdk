@@ -19,13 +19,13 @@ class BiometricSdkOperationsTest {
 
     @Test
     fun `iris keeps working when the face native libraries do not load`() {
-        val missingLibrary = UnsatisfiedLinkError("no jniopencv_highgui in java.library.path")
+        val missingLibrary = UnsatisfiedLinkError("no jnitensorflowlite in java.library.path")
         val sdk = BiometricSdkOperationsImpl(BiometricSdkConfig(null, irisConfig, faceConfig)) { throw missingLibrary }
 
         sdk.iris().matcher() // does not throw
         val error = assertFailsWith<IllegalStateException> { sdk.face() }
         assertSame(missingLibrary, error.cause)
-        assertTrue("jniopencv_highgui" in error.message.orEmpty(), error.message)
+        assertTrue("jnitensorflowlite" in error.message.orEmpty(), error.message)
     }
 
     @Test

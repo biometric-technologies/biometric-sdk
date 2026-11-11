@@ -97,7 +97,7 @@ jobs:
         run: rm -rf .sign
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jvm-android-release
           path: |
@@ -105,7 +105,7 @@ jobs:
             ./build/outputs/aar/biometric-sdk-release.aar
 
   cocoapods:
-    runs-on: macos-latest
+    runs-on: macos-14
     needs: check-version
     if: needs.check-version.outputs.version-changed == 'true'
     steps:
@@ -133,6 +133,9 @@ jobs:
 
       - name: Make gradlew executable again
         run: chmod +x ./gradlew
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app && xcodebuild -version
 
       - name: Install Cocoapods
         run: gem install cocoapods
@@ -173,7 +176,7 @@ jobs:
         run: zip -r biometric-sdk-xcframework-$PROJECT_VERSION-sources.zip ./build/cocoapods/publish/release/BiometricSdk.xcframework
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cocoapods-release
           path: ./biometric-sdk-xcframework-${{ env.PROJECT_VERSION }}-sources.zip
@@ -188,12 +191,12 @@ jobs:
       - name: Get project version
         run: echo "PROJECT_VERSION=${{ needs.check-version.outputs.project-version }}" >> $GITHUB_ENV
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: jvm-android-release
           path: ./jvm-android-release
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: cocoapods-release
           path: ./cocoapods-release

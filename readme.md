@@ -1149,4 +1149,4 @@ GNU General Public License v3.0, see [LICENSE.md](LICENSE.md). You can use, chan
 
 ## Contact
 
-Bugs and feature requests: [open an issue](https://github.com/biometric-technologies/biometric-sdk/issues). Everything else: info@iriscan.net, https://www.iriscan.com.
+Bugs and feature requests: [open an issue](https://github.com/biometric-technologies/biometric-sdk/issues). Everything else: info@iriscan.com, https://www.iriscan.com.

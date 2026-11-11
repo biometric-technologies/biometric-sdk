@@ -91,8 +91,21 @@ kotlin {
         }
         jvmMain {
             dependencies {
-                implementation("org.bytedeco:tensorflow-lite:2.10.0-1.5.8")
-                implementation("org.bytedeco:tensorflow-lite-platform:2.10.0-1.5.8")
+                // TensorFlow Lite on the JVM is JavaCPP's build (bytedeco). 2.10.0-1.5.8 had no natives
+                // for macOS arm64, so face detection, encoding and liveness failed on Apple Silicon;
+                // bytedeco builds them since 2.19.0-1.5.12.
+                val javacpp = "1.5.14"
+                val tensorflowLite = "2.21.0-$javacpp"
+                implementation("org.bytedeco:tensorflow-lite:$tensorflowLite")
+                // Natives only for the five desktop platforms bytedeco builds TensorFlow Lite for. The
+                // tensorflow-lite-platform artifact would also bring Android natives, which a JVM app
+                // never loads (Android uses org.tensorflow:tensorflow-lite), and since 1.5.13
+                // javacpp-platform, JavaCPP's natives for twelve platforms. JavaCPP's own natives are
+                // added for the same five platforms, as bytedeco now ships them with TensorFlow Lite.
+                for (platform in listOf("linux-x86_64", "linux-arm64", "macosx-x86_64", "macosx-arm64", "windows-x86_64")) {
+                    implementation("org.bytedeco:tensorflow-lite:$tensorflowLite:$platform")
+                    implementation("org.bytedeco:javacpp:$javacpp:$platform")
+                }
                 implementation("io.ktor:ktor-client-okhttp:3.2.3")
             }
         }

@@ -2,7 +2,6 @@ package net.iriscan.sdk.face.impl
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import com.soywiz.kmem.length
 import io.github.aakira.napier.Napier
 import net.iriscan.sdk.core.image.*
 import net.iriscan.sdk.core.io.DataBytes
@@ -51,14 +50,14 @@ internal actual class FaceEncoderInternal actual constructor(
         Napier.d(tag = traceId) { "Bitmap image created" }
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(bitmap)).buffer
         bitmap.recycle()
-        Napier.d(tag = traceId) { "Image pre-processed, ${imageBytes.length} bytes resolved" }
+        Napier.d(tag = traceId) { "Image pre-processed, ${imageBytes.capacity()} bytes resolved" }
         return encodeInternal(imageBytes)
     }
 
     actual fun encode(image: NativeImage, traceId: String?): DataBytes {
         Napier.d(tag = traceId) { "Encoding native image [${image.width},${image.height}]" }
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(image)).buffer
-        Napier.d(tag = traceId) { "Image pre-processed, ${imageBytes.length} bytes resolved" }
+        Napier.d(tag = traceId) { "Image pre-processed, ${imageBytes.capacity()} bytes resolved" }
         return encodeInternal(imageBytes, traceId)
     }
 

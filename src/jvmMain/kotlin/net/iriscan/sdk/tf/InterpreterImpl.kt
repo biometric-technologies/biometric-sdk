@@ -12,7 +12,7 @@ import java.nio.ByteBuffer
 /**
  * @author Slava Gornostal
  */
-actual class InterpreterImpl actual constructor(
+internal class InterpreterImpl(
     modelName: String,
     modelPath: String,
     modelChecksum: String?,
@@ -42,16 +42,20 @@ actual class InterpreterImpl actual constructor(
         modelLen = modelBytes.size.toLong()
     }
 
-    override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>, traceId: String?) {
+    // The model and interpreter are built once; rebuilding them on every call was slow and
+    // leaked the native FlatBufferModel. TFLite interpreters are not thread-safe, so calls are serialized.
+    private val flatBufferModel = FlatBufferModel.BuildFromBuffer(model, modelLen)
+    private val interpreter: org.bytedeco.tensorflowlite.Interpreter by lazy {
         val interpreter = org.bytedeco.tensorflowlite.Interpreter(null as Pointer?)
-        // TODO: improve reuse builder on multiple threads
-        val modelBuilder = InterpreterBuilder(
-            FlatBufferModel.BuildFromBuffer(model, modelLen),
-            BuiltinOpResolver()
-        )
+        val modelBuilder = InterpreterBuilder(flatBufferModel, BuiltinOpResolver())
         modelBuilder.apply(interpreter, Runtime.getRuntime().availableProcessors())
         modelBuilder.close()
         interpreter.AllocateTensors()
+        interpreter
+    }
+
+    @Synchronized
+    override fun invoke(inputs: Map<Int, Any>, outputs: MutableMap<Int, Any>, traceId: String?) {
         inputs.keys.forEach {
             val data = inputs[it]!! as FloatArray
             interpreter.typed_input_tensor_float(it)
@@ -72,7 +76,6 @@ actual class InterpreterImpl actual constructor(
                 }
             }
         }
-        interpreter.close()
     }
 
 }

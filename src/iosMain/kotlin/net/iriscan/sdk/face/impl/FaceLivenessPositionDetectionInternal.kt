@@ -18,7 +18,7 @@ import platform.Vision.VNImageRequestHandler
 internal actual class FaceLivenessPositionDetectionInternal actual
 constructor(private val modelConfig: LivenessModelPositionConfiguration) {
     actual fun detectPosition(image: NativeImage, traceId: String?): Int =
-        detectInternal(image.ptr, traceId)
+        detectInternal(image.cgImage, traceId)
 
     private fun detectInternal(cgImage: CGImageRef, traceId: String?): Int {
         Napier.d(tag = traceId) {
@@ -47,8 +47,8 @@ constructor(private val modelConfig: LivenessModelPositionConfiguration) {
             return 0
         }
         Napier.d(tag = traceId) { "Face angles (x,y,z): ${face.roll?.floatValue}, ${face.yaw?.floatValue}, ${face.pitch?.floatValue}" }
-        val eulerY = Math.toDegrees(face.yaw?.doubleValue ?: 0.0)
-        val eulerZ = Math.toDegrees(face.pitch?.doubleValue ?: 0.0)
-        return getOrientationBasedOnAngles(eulerY, eulerZ, modelConfig.threshold)
+        val yawDeg = Math.toDegrees(face.yaw?.doubleValue ?: 0.0)
+        val pitchDeg = Math.toDegrees(face.pitch?.doubleValue ?: 0.0)
+        return getOrientationBasedOnAngles(yawDeg, pitchDeg, modelConfig.threshold)
     }
 }

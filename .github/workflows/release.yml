@@ -13,18 +13,18 @@ jobs:
       version-changed: ${{ steps.check.outputs.version-changed }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0  # Fetch all history and tags
 
       - name: Set up JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Cache Gradle packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -57,16 +57,16 @@ jobs:
       SIGN_JAR_AND_AAR: true
     steps:
       - name: Check Out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Cache Gradle packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -97,7 +97,7 @@ jobs:
         run: rm -rf .sign
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jvm-android-release
           path: |
@@ -105,24 +105,24 @@ jobs:
             ./build/outputs/aar/biometric-sdk-release.aar
 
   cocoapods:
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: check-version
     if: needs.check-version.outputs.version-changed == 'true'
     steps:
       - name: Check Out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Get project version
         run: echo "PROJECT_VERSION=${{ needs.check-version.outputs.project-version }}" >> $GITHUB_ENV
 
       - name: Set up JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Cache Gradle packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -134,6 +134,9 @@ jobs:
       - name: Make gradlew executable again
         run: chmod +x ./gradlew
 
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+
       - name: Install Cocoapods
         run: gem install cocoapods
 
@@ -141,7 +144,7 @@ jobs:
         run: ./gradlew clean podPublishReleaseXCFramework
 
       - name: Checkout cocoapods sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           ssh-key: ${{ secrets.COCOAPODS_GIT_DEPLOY_KEY }}
           path: biometric-sdk-cocoapods-release
@@ -173,7 +176,7 @@ jobs:
         run: zip -r biometric-sdk-xcframework-$PROJECT_VERSION-sources.zip ./build/cocoapods/publish/release/BiometricSdk.xcframework
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cocoapods-release
           path: ./biometric-sdk-xcframework-${{ env.PROJECT_VERSION }}-sources.zip
@@ -188,12 +191,12 @@ jobs:
       - name: Get project version
         run: echo "PROJECT_VERSION=${{ needs.check-version.outputs.project-version }}" >> $GITHUB_ENV
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: jvm-android-release
           path: ./jvm-android-release
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: cocoapods-release
           path: ./cocoapods-release

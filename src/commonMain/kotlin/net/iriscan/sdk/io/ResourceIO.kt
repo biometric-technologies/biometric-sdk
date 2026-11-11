@@ -67,4 +67,4 @@ interface ResourceIO {
     ): String
 }
 
-internal expect class ResourceIOImpl(context: PlatformContext) : ResourceIO
+internal expect fun createResourceIO(context: PlatformContext): ResourceIO

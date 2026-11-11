@@ -676,6 +676,13 @@ little-endian; every row occupies whole words, so an eye rotation is a circular 
 of each row. With the defaults a template is 16 x 128 x 2 = 4096 code bits plus 4096
 mask bits: 8 + 512 + 512 = **1,032 bytes**.
 
+A template that starts with `IR2` but whose length does not match its header, or whose
+header has another version, another number of bits per cell, or 0 rows or 0 columns, is
+damaged (the encoder writes 1 to 255 rows and 32 to 2048 columns). The matcher throws
+`IllegalArgumentException` when it reads one: both templates of `matches` and `score` when
+both are `IR2` templates, the probe of `identify` and `matchesAny` when their list is not
+empty, and every template of the list when the probe is an `IR2` template.
+
 #### 8. Matching
 
 Two templates are compared with the masked fractional Hamming distance. The probe is

@@ -166,7 +166,7 @@ The project is a single Gradle module with the source sets `commonMain`,
 |---|---|
 | `net.iriscan.sdk` | `BiometricSdkFactory` (entry point), `BiometricSdkConfig` and its builder, `IrisConfig`, `FaceConfig`, `BiometricSdkOperations` |
 | `core.image` | `Image` (width, height, color type, `IntArray` of pixels), `ImageColorType` (`RGB`, `GRAY`, `BINARY`), color helpers, `Point`, `Circle`, and the platform type `NativeImage` |
-| `core.io` | Platform byte type `DataBytes`, `HashMethod` (`CRC32`, `SHA256`), and internal pure-Kotlin `MemoryStream`, CRC-32, Adler-32, SHA-256 and zlib/DEFLATE |
+| `core.io` | Platform byte type `DataBytes`, `HashMethod` (`CRC32`, `SHA256`), `ModelSource` (where a model comes from, [not used yet](#model-sources-planned)), and internal pure-Kotlin `MemoryStream`, CRC-32, Adler-32, SHA-256 and zlib/DEFLATE |
 | `core.record` | `BiometricRecord` interface and `BiometricType` |
 | `io` | `InputOutputOperations` (image codecs, native image conversion, record I/O), `ResourceIO` and `ResourceIOFactory` (model files and cache), `ImageSerializer` and `BiometricRecordSerializer` interfaces, BMP and PNG serializers |
 | `iris` | Public iris API (`IrisOperations`, `IrisExtractor`, `IrisEncoder`, `IrisMatcher`, `IrisQualityAssessor`, property classes) and `iris.impl` with the algorithm |
@@ -901,6 +901,28 @@ loads the model through a code path that accepts these arguments but does not ch
 them (see [Limitations](#limitations-and-known-gaps)). Because the cache name does not
 depend on the URL, changing the model URL on Android or the JVM does not replace a
 cached model; clear the cache file to force a new download.
+
+### Model sources (planned)
+
+The configuration classes above will take a `ModelSource` (`net.iriscan.sdk.core.io`) in
+place of `path` and the three checksum parameters: one type for every operation that runs
+a model, face detection on the JVM, face encoding and liveness now, iris segmentation and
+fingerprint minutiae later. The type is in the SDK so that its API can be agreed on; no
+configuration takes it yet.
+
+| Source | The model | SHA-256 |
+|---|---|---|
+| `ModelSource.BuiltIn` | The SDK's own model for the operation; an operation without one rejects it | none |
+| `ModelSource.AppResource("models/facenet.tflite")` | Shipped in the app: a classpath resource on the JVM, an asset on Android, a main bundle resource on iOS, by its path from the root | optional |
+| `ModelSource.File("/opt/models/facenet.tflite")` | A file on the device, by its absolute path (on Android too) | optional |
+| `ModelSource.Download("https://models.example.com/facenet.tflite", sha256)` | Downloaded at the first initialization and cached on the device | required |
+
+A checksum is the SHA-256 of the file as `sha256sum` prints it; CRC-32 is not accepted.
+A download is cached under its checksum, so a new model never reuses an old cached file,
+a damaged cached file is downloaded again, and a download with another checksum fails
+`initialize` with an `IOException`. A URL that is not `https://`, a blank path or a
+checksum that is not a SHA-256 throws `IllegalArgumentException` when the source is
+created (a throwing initializer in Swift).
 
 ## Images, records and I/O
 

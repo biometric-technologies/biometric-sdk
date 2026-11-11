@@ -197,7 +197,7 @@ flowchart TD
         IOSN["CGImageRef wrapper, NSData<br/>Vision framework<br/>TensorFlowLiteObjC 2.12<br/>Ktor Darwin"]
     end
     subgraph jvm["jvmMain"]
-        JVMN["BufferedImage, ByteArray<br/>BlazeFace face detector<br/>TensorFlow Lite 2.10 via JavaCPP<br/>Ktor OkHttp"]
+        JVMN["BufferedImage, ByteArray<br/>BlazeFace face detector<br/>TensorFlow Lite 2.21 via JavaCPP<br/>Ktor OkHttp"]
     end
     APP --> FACTORY --> OPS
     OPS --> IO
@@ -283,12 +283,15 @@ dependencies {
 </dependency>
 ```
 
-The JVM artifact depends on the JavaCPP build `org.bytedeco:tensorflow-lite-platform` 2.10.0
-for face encoding, face detection and liveness. The `-platform` artifact includes native
-libraries for all supported operating systems; exclude the platforms you do not deploy to
-if size matters. Iris and fingerprint recognition do not use native libraries. Releases up
-to 0.6.0 also depended on `org.bytedeco:opencv-platform`, which brought OpenCV, OpenBLAS and
-CPython natives and needed GTK 2 on Linux; it is gone.
+The JVM artifact depends on the JavaCPP build of TensorFlow Lite, `org.bytedeco:tensorflow-lite`
+2.21.0-1.5.14, for face encoding, face detection and liveness, with its native libraries (and
+JavaCPP's) for Linux x86_64 and arm64, macOS x86_64 and arm64 (Apple Silicon) and Windows
+x86_64; on other platforms these operations cannot load TensorFlow Lite. To ship fewer
+platforms, exclude `org.bytedeco:tensorflow-lite` and `org.bytedeco:javacpp` from this
+dependency and declare both yourself with the classifiers you deploy to. Iris and fingerprint
+recognition do not use native libraries. Releases up to 0.6.0 also depended on
+`org.bytedeco:opencv-platform`, which brought OpenCV, OpenBLAS and CPython natives and needed
+GTK 2 on Linux; it is gone.
 
 ### iOS (CocoaPods)
 
@@ -1041,7 +1044,7 @@ Main dependencies:
 | common | kotlinx-datetime 0.6.2, kotlinx-coroutines 1.10.2, Napier 2.7.1, Ktor client 3.2.3 |
 | Android | TensorFlow Lite 2.12.0, TensorFlow Lite Support 0.4.3, ML Kit face detection 16.1.5, Ktor OkHttp |
 | iOS | TensorFlowLiteObjC 2.12.0 (CocoaPods), Ktor Darwin |
-| JVM | JavaCPP TensorFlow Lite 2.10.0-1.5.8, Ktor OkHttp |
+| JVM | JavaCPP TensorFlow Lite 2.21.0-1.5.14, Ktor OkHttp |
 
 ## CI and releases
 

@@ -487,7 +487,7 @@ Points specific to Swift:
 | Call | Returns | Description |
 |---|---|---|
 | `iris().extractor().extract(image)` | `Image?` | Unwrapped iris texture, `normalizedWidth` x `normalizedHeight`, `GRAY`, occluded pixels set to `-1`; `null` when segmentation fails |
-| `iris().encoder().extractAndEncode(image)` | `DataBytes?` | Segment, normalize and encode in one step; `null` when segmentation fails or less than 20% of the texture is usable |
+| `iris().encoder().extractAndEncode(image)` | `DataBytes?` | Segment, normalize and encode in one step; `null` when segmentation fails, less than 20% of the texture is usable, or the template has too few valid bits to be compared (see [Matching](#8-matching)) |
 | `iris().encoder().encode(texture)` | `DataBytes` | Encode a texture produced by `extract` (or any grayscale texture, resampled to the configured size) |
 | `iris().matcher().score(t1, t2)` | `Double` | Similarity 0.0 to 1.0 (`1 - HD`) |
 | `iris().matcher().matches(t1, t2)` | `Boolean` | `score >= threshold` |
@@ -696,6 +696,12 @@ the template bits (1,638 for the default size). Shifts with fewer than
 smallest `HDnorm` over all shifts gives the score `1 - HDnorm`: 1.0 for identical codes,
 about 0.5 for unrelated irises. If no shift has enough common bits, or the templates
 have different dimensions, the score is 0.
+
+Common bits cannot outnumber the valid bits of either template, so a template with
+fewer than `minComparedBitsFraction` valid bits scores 0 against every template, a
+recapture of the same eye included. `extractAndEncode` returns `null` for such a
+template, so that the eye is captured again instead of being enrolled or searched
+without any chance of a match; `encode(texture)` still returns it.
 
 For 1:N search, `identify` prepares all rotations of the probe once and scans the
 gallery linearly; with the defaults each comparison is 17 shifts over 64 words of code

@@ -40,7 +40,7 @@ Iriscan uses the same code in its own products, and the face match of this SDK i
 ## What it does
 
 - Turns a near-infrared photo of an eye into an iris template and compares two templates. The whole iris pipeline is plain Kotlin, so it behaves the same on every platform and needs no native libraries.
-- Finds a face in a photo, turns it into an embedding with a FaceNet-type model and compares embeddings. Uses ML Kit on Android, Apple Vision on iOS and OpenCV on the JVM to find the face, and TensorFlow Lite to run the model.
+- Finds a face in a photo, turns it into an embedding with a FaceNet-type model and compares embeddings. Uses ML Kit on Android, Apple Vision on iOS and the BlazeFace model (bundled) on the JVM to find the face, and TensorFlow Lite to run the models.
 - Checks that a face is live, not a printed photo or a screen, with a liveness model, and tells which way the head is turned.
 - Reads and writes PNG and BMP images and converts to and from Bitmap, UIImage and BufferedImage.
 - Serializes templates as ISO/IEC 19794-6 (iris image) and ISO/IEC 19794-2 (finger minutiae) records, the formats other biometric systems understand.
@@ -146,7 +146,7 @@ the new ones (see [Matching](#8-matching) for how old templates are handled).
 |---|---|---|---|---|---|
 | Iris extraction, encoding, matching | `iris()` | yes | yes | yes | Common Kotlin, no native dependencies |
 | Iris quality assessment | `iris().quality()` | yes | yes | yes | Components of ISO/IEC 29794-6, not certified |
-| Face extraction | `face().extractor()` | ML Kit | Vision | OpenCV Haar cascades | |
+| Face extraction | `face().extractor()` | ML Kit | Vision | BlazeFace (TFLite, bundled) | |
 | Face encoding and matching | `face().encoder()`, `face().matcher()` | TFLite | TFLite | TFLite | You supply the FaceNet-type model |
 | Photo liveness | `face().livenessPhoto()` | TFLite | TFLite | TFLite | You supply the model (DeePixBiS-type) |
 | Position liveness | `face().livenessPosition()` | ML Kit angles | Vision angles | always returns 0 | |
@@ -197,7 +197,7 @@ flowchart TD
         IOSN["CGImageRef wrapper, NSData<br/>Vision framework<br/>TensorFlowLiteObjC 2.12<br/>Ktor Darwin"]
     end
     subgraph jvm["jvmMain"]
-        JVMN["BufferedImage, ByteArray<br/>OpenCV 4.6 Haar cascades<br/>TensorFlow Lite 2.10 via JavaCPP<br/>Ktor OkHttp"]
+        JVMN["BufferedImage, ByteArray<br/>BlazeFace face detector<br/>TensorFlow Lite 2.10 via JavaCPP<br/>Ktor OkHttp"]
     end
     APP --> FACTORY --> OPS
     OPS --> IO
@@ -231,7 +231,7 @@ the pieces listed below, declared with `expect` in common code (the build enable
 | `InputOutputImageConvertOperations` | `convert(Bitmap)`, `convertToBitmap(Image)` | `convert(CGImageRef)`, `convertToCGImage(Image)`, `nsDataToByteArray`, `byteArrayToNsData` | `convert(BufferedImage)`, `convertToBufferedImage(Image)` |
 | Native image read/write | `BitmapFactory` / `Bitmap.compress` | ImageIO (`CGImageSource`) / raw pixel buffer | `javax.imageio.ImageIO` |
 | `createResourceIO` | assets, classpath, app files, HTTPS; cache in `Context.cacheDir` | app bundle, files, HTTPS; cache in `NSCachesDirectory` | classpath, files, HTTPS; cache in `${java.io.tmpdir}/.biometric-sdk/` |
-| `FaceExtractorInternal` | ML Kit face detection | Vision `VNDetectFaceLandmarksRequest` | OpenCV Haar cascades |
+| `FaceExtractorInternal` | ML Kit face detection | Vision `VNDetectFaceLandmarksRequest` | BlazeFace short-range model in TensorFlow Lite; decoding in common code (`BlazeFace`) |
 | `FaceEncoderInternal`, `FaceLivenessPhotoDetectionInternal` | TFLite `Interpreter` + TFLite Support image ops | `TFLInterpreter` (XNNPACK on) + Core Graphics | JavaCPP TFLite + Java2D |
 | `FaceLivenessPositionDetectionInternal` | ML Kit head Euler angles | Vision yaw and pitch | not implemented, returns 0 |
 
@@ -283,11 +283,12 @@ dependencies {
 </dependency>
 ```
 
-The JVM artifact depends on the JavaCPP builds `org.bytedeco:opencv-platform` 4.6.0 and
-`org.bytedeco:tensorflow-lite-platform` 2.10.0. The `-platform` artifacts include native
-libraries for all supported operating systems, which makes the dependency set large;
-exclude the platforms you do not deploy to if size matters. Iris recognition itself
-does not use these native libraries.
+The JVM artifact depends on the JavaCPP build `org.bytedeco:tensorflow-lite-platform` 2.10.0
+for face encoding, face detection and liveness. The `-platform` artifact includes native
+libraries for all supported operating systems; exclude the platforms you do not deploy to
+if size matters. Iris and fingerprint recognition do not use native libraries. Releases up
+to 0.6.0 also depended on `org.bytedeco:opencv-platform`, which brought OpenCV, OpenBLAS and
+CPython natives and needed GTK 2 on Linux; it is gone.
 
 ### iOS (CocoaPods)
 
@@ -808,7 +809,7 @@ Note that for faces `matchScore` is a distance, unlike the iris matcher's simila
 
 ```mermaid
 flowchart LR
-    IMG["NativeImage"] --> DET["Platform face detector<br/>Android: ML Kit<br/>iOS: Vision<br/>JVM: OpenCV Haar cascades"]
+    IMG["NativeImage"] --> DET["Platform face detector<br/>Android: ML Kit<br/>iOS: Vision<br/>JVM: BlazeFace in TFLite"]
     DET --> CROP["Face crop"]
     CROP --> PRE1["Resize to model input<br/>per-image standardization"]
     PRE1 --> NET["TFLite FaceNet-type model"]
@@ -823,15 +824,16 @@ flowchart LR
 
 | | Android | iOS | JVM |
 |---|---|---|---|
-| Detector | ML Kit face detection, fast mode, all landmarks | Vision `VNDetectFaceLandmarksRequest` | OpenCV Haar cascade `haarcascade_frontalface_alt` on a histogram-equalized grayscale image; minimum face size `max(24, shortSide / 8)` |
+| Detector | ML Kit face detection, fast mode, all landmarks | Vision `VNDetectFaceLandmarksRequest` | MediaPipe BlazeFace short-range model (`face_detection_short_range.tflite`, 128 x 128 input, letterboxed), score at least 0.5, weighted non-maximum suppression at IoU 0.3, as in MediaPipe; minimum face size `max(24, shortSide / 8)` |
 | Face chosen | Largest | First result | Largest |
 | Requirements | Box strictly inside the image, both eye landmarks found | Box origin inside the image, both eye landmarks found | None beyond a detection |
 | Crop | The detection box | The detection box | Square, 20% margin around the box, resampled to 192 x 192 |
-| Alignment | Rotated only if the eye line is tilted by more than 45 degrees | Rotated only if the eye line is tilted by more than 45 degrees | Eyes found with `haarcascade_eye` in the upper 60% of the face; crop rotated so the eye line is level when the tilt is at most 30 degrees |
+| Alignment | Rotated only if the eye line is tilted by more than 45 degrees | Rotated only if the eye line is tilted by more than 45 degrees | Eyes from the model's keypoints; crop rotated so the eye line is level when the tilt is at most 30 degrees |
 
 On Android the detector is called synchronously (`Tasks.await`), so face operations
-must run off the main thread. The JVM cascades are bundled in the JAR and copied to
-`${java.io.tmpdir}/.biometric-sdk/` on first use.
+must run off the main thread. The JVM detector model (230 KB, Apache License 2.0, from
+MediaPipe) is bundled in the JAR and read from the classpath; it is best for faces within
+about two metres of the camera, which covers enrollment photos and selfies.
 
 ### Encoding and matching
 
@@ -1039,7 +1041,7 @@ Main dependencies:
 | common | kotlinx-datetime 0.6.2, kotlinx-coroutines 1.10.2, Napier 2.7.1, Ktor client 3.2.3 |
 | Android | TensorFlow Lite 2.12.0, TensorFlow Lite Support 0.4.3, ML Kit face detection 16.1.5, Ktor OkHttp |
 | iOS | TensorFlowLiteObjC 2.12.0 (CocoaPods), Ktor Darwin |
-| JVM | JavaCPP TensorFlow Lite 2.10.0-1.5.8, JavaCPP OpenCV 4.6.0-1.5.8, Ktor OkHttp |
+| JVM | JavaCPP TensorFlow Lite 2.10.0-1.5.8, Ktor OkHttp |
 
 ## CI and releases
 
@@ -1106,10 +1108,6 @@ Known issues
 
 - Model checksums are not verified on Android and the JVM (the data-loading path of
   `ResourceIO` ignores them); only iOS checks them.
-- On the JVM, the cache directory `${java.io.tmpdir}/.biometric-sdk/` is created only
-  when a face extractor loads its cascades. With `extractor` left `null` in `withFace`,
-  the encoder or liveness model is loaded before any extractor exists, and saving a
-  downloaded model fails if the directory is missing.
 - `writeNativeImage` on iOS returns raw pixels instead of an encoded file, and on Android
   does not support BMP.
 - The common PNG decoder does not read 16-bit or interlaced files.
@@ -1146,6 +1144,8 @@ For pull requests:
 ## License
 
 GNU General Public License v3.0, see [LICENSE.md](LICENSE.md). You can use, change and redistribute the SDK freely as long as your software is open source under the same terms. For a closed-source product, Iriscan offers a [commercial license](https://www.iriscan.com/commercial-license).
+
+The JVM face detector model `face_detection_short_range.tflite` is MediaPipe's BlazeFace short-range model, Copyright Google LLC, Apache License 2.0; see [its notice](src/jvmMain/resources/models/NOTICE.md).
 
 ## Contact
 

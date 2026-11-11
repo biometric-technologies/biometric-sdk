@@ -58,6 +58,8 @@ internal class ResourceIOImpl(private val context: PlatformContext) : ResourceIO
 
     override fun cacheSave(name: String, data: ByteArray) {
         val cachePath = File("${System.getProperty("java.io.tmpdir")}/.biometric-sdk/$name").toPath()
+        // the OpenCV face extractor used to create this directory when it copied its cascades
+        Files.createDirectories(cachePath.parent)
         Files.createFile(cachePath)
             .writeBytes(data)
     }

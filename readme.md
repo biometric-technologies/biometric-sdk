@@ -191,7 +191,7 @@ flowchart TD
         ISO["iris.record.iso, finger.record.iso<br/>ISO/IEC 19794-6 and 19794-2"]
     end
     subgraph android["androidMain"]
-        ANDR["Bitmap, ByteArray, Context<br/>ML Kit face detection<br/>TensorFlow Lite 2.12<br/>Ktor OkHttp"]
+        ANDR["Bitmap, ByteArray, Context<br/>ML Kit face detection<br/>LiteRT 1.4 (TensorFlow Lite)<br/>Ktor OkHttp"]
     end
     subgraph ios["iosMain"]
         IOSN["CGImageRef wrapper, NSData<br/>Vision framework<br/>TensorFlowLiteObjC 2.12<br/>Ktor Darwin"]
@@ -264,8 +264,12 @@ dependencies {
 
 The library manifest declares no permissions. If you load models over HTTPS, add
 `<uses-permission android:name="android.permission.INTERNET"/>` to your app manifest.
-The AAR brings in TensorFlow Lite 2.12.0, TensorFlow Lite Support 0.4.3 and ML Kit
-face detection 16.1.5 as dependencies.
+The AAR brings in LiteRT 1.4.2 (TensorFlow Lite under its new name), the LiteRT Support
+API 1.4.2 and ML Kit face detection 16.1.7 as dependencies. Their native libraries are
+linked for 16 KB memory pages, which Google Play requires of apps that target Android 15
+or higher. LiteRT keeps the `org.tensorflow.lite` classes, so remove any
+`org.tensorflow:tensorflow-lite*` dependency from your app: the old and the new artifacts
+together fail the build with duplicate classes.
 
 ### JVM
 
@@ -1061,7 +1065,7 @@ Main dependencies:
 | Source set | Dependencies |
 |---|---|
 | common | kotlinx-datetime 0.6.2, kotlinx-coroutines 1.10.2, Napier 2.7.1, Ktor client 3.2.3 |
-| Android | TensorFlow Lite 2.12.0, TensorFlow Lite Support 0.4.3, ML Kit face detection 16.1.5, Ktor OkHttp |
+| Android | LiteRT 1.4.2, LiteRT Support API 1.4.2, ML Kit face detection 16.1.7, Ktor OkHttp |
 | iOS | TensorFlowLiteObjC 2.12.0 (CocoaPods), Ktor Darwin |
 | JVM | JavaCPP TensorFlow Lite 2.10.0-1.5.8, Ktor OkHttp |
 

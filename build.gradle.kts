@@ -98,9 +98,18 @@ kotlin {
         }
         androidMain {
             dependencies {
-                implementation("org.tensorflow:tensorflow-lite:2.12.0")
-                implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
-                implementation("com.google.mlkit:face-detection:16.1.5")
+                // LiteRT is TensorFlow Lite under its new name, with the same org.tensorflow.lite classes.
+                // Its native libraries are linked for 16 KB memory pages, which Google Play requires of
+                // apps that target Android 15 or higher; those of TensorFlow Lite 2.12.0 are not.
+                // 1.4.2 is the last 1.x release and needs minSdk 21; moving to 2.x is a step of its own
+                // (new Support package names, built with a newer Kotlin than this project's).
+                implementation("com.google.ai.edge.litert:litert:1.4.2")
+                // The Support API without a runtime of its own (the runtime is the line above).
+                // litert-support would add a second library with the namespace org.tensorflow.lite.support,
+                // which Android Gradle Plugin 9 rejects in the app.
+                implementation("com.google.ai.edge.litert:litert-support-api:1.4.2")
+                // 16.1.5 ships 4 KB aligned native libraries; 16.1.7 is built for 16 KB pages.
+                implementation("com.google.mlkit:face-detection:16.1.7")
                 implementation("io.ktor:ktor-client-okhttp:3.2.3")
             }
         }

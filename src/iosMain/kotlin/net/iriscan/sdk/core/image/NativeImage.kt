@@ -1,6 +1,5 @@
 package net.iriscan.sdk.core.image
 
-import cnames.structs.CGImage
 import kotlinx.cinterop.*
 import net.iriscan.sdk.core.io.DataBytes
 import net.iriscan.sdk.io.image.ImageFormat
@@ -15,7 +14,11 @@ import platform.ImageIO.kCGImageSourceShouldCache
 /**
  * @author Slava Gornostal
  */
-actual typealias NativeImage = CGImage
+/**
+ * A Core Graphics image. Kotlin/Native cannot use the opaque CGImage struct as a type
+ * argument any more, so the image reference is wrapped.
+ */
+actual class NativeImage(val cgImage: CGImageRef)
 
 internal actual fun internalReadNativeImage(dataBytes: DataBytes): NativeImage {
     val dataPointer = dataBytes.bytes!!.reinterpret<UByteVar>()
@@ -32,22 +35,22 @@ internal actual fun internalReadNativeImage(dataBytes: DataBytes): NativeImage {
     CFDictionarySetValue(cfOptions, keys[0]!!.reinterpret<CFTypeRefVar>(), values[0]!!.reinterpret<CFTypeRefVar>())
     val imageSource = CGImageSourceCreateWithData(cfData, cfOptions)
     val image = CGImageSourceCreateImageAtIndex(imageSource, 0u, null)!!
-    return image.pointed
+    return NativeImage(image)
 }
 
 internal actual fun internalWriteNativeImage(
     image: NativeImage,
     format: ImageFormat
 ): DataBytes {
-    val width = CGImageGetWidth(image.ptr)
-    val height = CGImageGetHeight(image.ptr)
+    val width = CGImageGetWidth(image.cgImage)
+    val height = CGImageGetHeight(image.cgImage)
     val pixelCount = width * height
     val bytesPerRow = width * 4u
     val data = nativeHeap.allocArray<UIntVar>(pixelCount.toInt())
     val colorSpace = CGColorSpaceCreateDeviceRGB()
     val bitmapInfo = CGImageAlphaInfo.kCGImageAlphaNoneSkipFirst.value or kCGBitmapByteOrder32Big
     val context = CGBitmapContextCreate(data, width, height, 8u, bytesPerRow, colorSpace, bitmapInfo)
-    CGContextDrawImage(context, CGRectMake(0.0, 0.0, width.toDouble(), height.toDouble()), image.ptr)
+    CGContextDrawImage(context, CGRectMake(0.0, 0.0, width.toDouble(), height.toDouble()), image.cgImage)
     val dataBytes = CGBitmapContextGetData(context)!!.reinterpret<UByteVar>()
     val dataLength = height * bytesPerRow
     val cfData = CFDataCreateWithBytesNoCopy(kCFAllocatorDefault, dataBytes, dataLength.toLong(), null)!!

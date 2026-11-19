@@ -1,24 +1,26 @@
 package net.iriscan.sdk
 
-import com.soywiz.korio.concurrent.atomic.korAtomic
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import net.iriscan.sdk.io.ResourceIOFactory
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * @author Slava Gornostal
  */
+@OptIn(ExperimentalAtomicApi::class)
 object BiometricSdkFactory : BiometricSdk {
 
     init {
         Napier.base(DebugAntilog())
     }
 
-    private val instanceRef = korAtomic<BiometricSdkOperations?>(null)
+    private val instanceRef = AtomicReference<BiometricSdkOperations?>(null)
     override fun configBuilder(): BiometricSdkConfigBuilder = BiometricSdkConfigBuilder()
 
     override fun initialize(config: BiometricSdkConfig) {
-        if (instanceRef.value != null) {
+        if (instanceRef.load() != null) {
             return
         }
         ResourceIOFactory.initialize(config.context)
@@ -26,7 +28,7 @@ object BiometricSdkFactory : BiometricSdk {
     }
 
     override fun getInstance(): BiometricSdkOperations? {
-        val instance = instanceRef.value
+        val instance = instanceRef.load()
         if (instance == null) {
             Napier.e("Biometric SDK is not ready. Initialize SDK by calling initialize(...)")
         }

@@ -9,7 +9,7 @@ import net.iriscan.sdk.core.createContext
 object ResourceIOFactory {
     private var instance: ResourceIO? = null
     fun initialize(context: PlatformContext?) {
-        this.instance = ResourceIOImpl(context ?: createContext())
+        this.instance = createResourceIO(context ?: createContext())
     }
 
     fun getInstance(): ResourceIO =

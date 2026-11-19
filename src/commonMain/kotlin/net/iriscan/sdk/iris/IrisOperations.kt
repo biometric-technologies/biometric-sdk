@@ -13,4 +13,5 @@ interface IrisOperations {
     fun extractor(): IrisExtractor
     fun encoder(): IrisEncoder
     fun matcher(): IrisMatcher
+    fun quality(): IrisQualityAssessor
 }

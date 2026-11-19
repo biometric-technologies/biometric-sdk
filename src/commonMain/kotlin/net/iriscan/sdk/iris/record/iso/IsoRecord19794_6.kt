@@ -49,7 +49,19 @@ data class IsoRecord19794_6Header(
     val smDiameter: Int,
     val lgDiameter: Int,
 ) {
-    val size = qualityBlocks.size * 5 + 1 + 51 // + 1 - length of qualityBlocks field
+    /**
+     * Bytes this header takes in a record: 51 bytes of fixed fields (representation length 4,
+     * capture date and time 9, device technology 1, vendor 2, type 2, representation number 2,
+     * eye label 1, image type 1, image format 1, properties 1, width 2, height 2, bit depth 1,
+     * range 2, roll angle 2, roll uncertainty 2, iris center and diameter 12, image length 4),
+     * 1 byte for the number of quality blocks and [QUALITY_BLOCK_BYTES] per quality block.
+     */
+    val size = qualityBlocks.size * QUALITY_BLOCK_BYTES + 1 + 51
+
+    companion object {
+        /** Quality score (1), quality algorithm vendor id (2), quality algorithm id (2). */
+        const val QUALITY_BLOCK_BYTES = 5
+    }
 }
 
 enum class DeviceTechnology(override val value: Int) : Identifiable { UNKNOWN(0), CMOS_CCD(1); }

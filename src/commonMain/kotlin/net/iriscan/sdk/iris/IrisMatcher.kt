@@ -20,4 +20,23 @@ interface IrisMatcher {
      * */
     fun matches(sample1: DataBytes, sample2: DataBytes): Boolean
     fun matchesAny(sample1: DataBytes, samples: List<DataBytes>): Boolean
+
+    /**
+     * Similarity of two templates, 0.0-1.0 (1 - normalized Hamming distance).
+     * Compare with [IrisMatchProperties.threshold].
+     * */
+    fun score(sample1: DataBytes, sample2: DataBytes): Double
+
+    /**
+     * Finds the most similar template in [samples] (1:N search).
+     * @return the best candidate, or null if [samples] is empty or nothing reaches the threshold
+     * */
+    fun identify(sample: DataBytes, samples: List<DataBytes>): IrisMatch?
 }
+
+/**
+ * Result of a 1:N search.
+ * @property index position of the template in the searched list
+ * @property score similarity, 0.0-1.0
+ */
+data class IrisMatch(val index: Int, val score: Double)

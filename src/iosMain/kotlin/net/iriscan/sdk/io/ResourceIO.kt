@@ -1,14 +1,12 @@
 package net.iriscan.sdk.io
 
-import com.soywiz.korio.util.checksum.CRC32
-import com.soywiz.korio.util.checksum.compute
-import com.soywiz.krypto.SHA256
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.engine.darwin.*
 import kotlinx.coroutines.runBlocking
 import net.iriscan.sdk.core.PlatformContext
 import net.iriscan.sdk.core.io.HashMethod
+import net.iriscan.sdk.core.io.calculateHash as hashOf
 import net.iriscan.sdk.core.utils.getBytes
 import net.iriscan.sdk.io.exception.IOException
 import net.iriscan.sdk.utils.NSErrorException
@@ -20,7 +18,9 @@ import platform.Foundation.*
 /**
  * @author Slava Gornostal
  */
-internal actual class ResourceIOImpl actual constructor(private val context: PlatformContext) : ResourceIO {
+internal actual fun createResourceIO(context: PlatformContext): ResourceIO = ResourceIOImpl(context)
+
+internal class ResourceIOImpl(private val context: PlatformContext) : ResourceIO {
 
     private val client = HttpClient(Darwin) {
         engine {
@@ -49,11 +49,7 @@ internal actual class ResourceIOImpl actual constructor(private val context: Pla
         else -> throw IOException("Illegal path location: $path")
     }
 
-    override fun calculateHash(data: ByteArray, method: HashMethod): String =
-        when (method) {
-            HashMethod.CRC32 -> CRC32.compute(data).toString(16)
-            HashMethod.SHA256 -> SHA256.digest(data).hexLower
-        }
+    override fun calculateHash(data: ByteArray, method: HashMethod): String = hashOf(data, method)
 
     override fun cacheExists(name: String): Boolean = try {
         val filePath = getFilePath(name)

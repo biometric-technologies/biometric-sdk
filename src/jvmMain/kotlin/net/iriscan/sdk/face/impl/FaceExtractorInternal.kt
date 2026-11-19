@@ -1,87 +1,94 @@
 package net.iriscan.sdk.face.impl
 
-import net.iriscan.sdk.core.image.*
-import net.iriscan.sdk.core.utils.createImg
-import org.bytedeco.javacpp.BytePointer
-import org.bytedeco.opencv.global.opencv_core
-import org.bytedeco.opencv.global.opencv_imgcodecs.imencode
-import org.bytedeco.opencv.global.opencv_imgproc
-import org.bytedeco.opencv.opencv_core.Mat
-import org.bytedeco.opencv.opencv_core.Point2f
-import org.bytedeco.opencv.opencv_core.RectVector
-import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier
-import java.awt.Color
+import io.github.aakira.napier.Napier
+import net.iriscan.sdk.core.image.Image
+import net.iriscan.sdk.core.image.ImageColorType
+import net.iriscan.sdk.core.image.NativeImage
+import net.iriscan.sdk.tf.InterpreterImpl
 import java.awt.image.BufferedImage
-import java.awt.image.DataBufferByte
-import java.io.ByteArrayInputStream
-import java.io.File
-import java.nio.file.Files
-import javax.imageio.ImageIO
-import kotlin.io.path.absolutePathString
-import kotlin.math.atan2
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * @author Slava Gornostal
+ *
+ * Face detection on the JVM with MediaPipe's BlazeFace short-range model, run by the same
+ * TensorFlow Lite as the face encoder. The model (230 KB) is bundled in the jar, so nothing is
+ * downloaded. The largest face is cropped with a margin and rotated so that the line between the
+ * eyes, two of the model's keypoints, is horizontal. The result is a square crop ready for the encoder.
  */
 internal actual class FaceExtractorInternal {
 
-    private val classifier: CascadeClassifier
-
-    init {
-        val classifierFile =
-            File("${System.getProperty("java.io.tmpdir")}/.biometric-sdk/haarcascade_frontalface_alt.xml")
-                .toPath()
-        if (!Files.exists(classifierFile)) {
-            val classifierXml = javaClass.getResourceAsStream("/haarcascade_frontalface_alt.xml")!!
-            Files.createDirectories(classifierFile.parent)
-            Files.copy(classifierXml, classifierFile)
-        }
-        classifier = CascadeClassifier(classifierFile.absolutePathString())
-    }
-
-    actual fun extract(image: Image, rotateOnWrongOrientation: Boolean, traceId: String?): Image? {
-        val bufferedImage = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
-        val data = image.colors.flatMap { listOf(it.red(), it.green(), it.blue()) }.toIntArray()
-        bufferedImage.raster.setPixels(0, 0, image.width, image.height, data)
-        val face = extractInternal(bufferedImage, rotateOnWrongOrientation) ?: return null
-        return createImg(
-            width = face.width,
-            height = face.height,
-            type = ImageColorType.RGB
-        ) { x, y ->
-            val rawColor = Color(face.getRGB(x, y))
-            createColor(rawColor.red, rawColor.green, rawColor.blue)
-        }
-    }
+    actual fun extract(image: Image, rotateOnWrongOrientation: Boolean, traceId: String?): Image? =
+        extractInternal(image, rotateOnWrongOrientation, traceId)
 
     actual fun extract(image: NativeImage, rotateOnWrongOrientation: Boolean, traceId: String?): NativeImage? =
-        extractInternal(image, rotateOnWrongOrientation)
+        extractInternal(toSdkImage(image), rotateOnWrongOrientation, traceId)?.let { toNativeImage(it) }
 
-    private fun extractInternal(image: BufferedImage, rotateOnWrongOrientation: Boolean): BufferedImage? {
-        val data = (image.raster.dataBuffer as DataBufferByte).data
-        val input = Mat(image.height, image.width, opencv_core.CV_8UC3, BytePointer(*data))
-        val result = RectVector()
-        classifier.detectMultiScale(input, result)
-        val faces = result.get()
-        if (faces.isEmpty()) {
+    private fun extractInternal(image: Image, align: Boolean, traceId: String?): Image? {
+        val face = detectFaces(image)
+            // faces smaller than this are too small to encode reliably (the same limit as before)
+            .filter { max(it.width, it.height) >= max(MIN_FACE_PX, min(image.width, image.height) / MIN_FACE_SHARE_DIVISOR) }
+            .maxByOrNull { it.width * it.height }
+        if (face == null) {
+            Napier.w(tag = traceId) { "No face found on image [${image.width},${image.height}]" }
             return null
         }
-        val rect = faces[0]
-        if (
-            !(rect.x() in 1 until input.cols() && (rect.x() + rect.width()) in 1 until input.cols() &&
-                    rect.y() in 1 until input.rows() && (rect.y() + rect.height()) in 1 until input.rows())
-        ) {
-            return null
-        }
-        val center = Point2f((rect.x() + rect.width() / 2.0).toFloat(), (rect.y() + rect.height() / 2.0).toFloat())
-        val angle = atan2(rect.y().toDouble(), (rect.x() + rect.width()).toDouble()) * 180.0 / Math.PI
-        val rotationMatrix = opencv_imgproc.getRotationMatrix2D(center, angle, 1.0)
-        val rotatedImage = Mat()
-        opencv_imgproc.warpAffine(input, rotatedImage, rotationMatrix, input.size())
-        val bytes = BytePointer()
-        imencode(".jpg", rotatedImage, bytes)
-        val byteArray = bytes.asByteBuffer().array()
-        return ImageIO.read(ByteArrayInputStream(byteArray))
+        // keypoint 0 is the person's right eye, on the left of an unmirrored photo
+        val angle = if (align) {
+            eyeLineAngle(face.keypointsX[0], face.keypointsY[0], face.keypointsX[1], face.keypointsY[1]) ?: 0.0
+        } else 0.0
+        val x = face.left.roundToInt()
+        val y = face.top.roundToInt()
+        val w = face.width.roundToInt()
+        val h = face.height.roundToInt()
+        Napier.d(tag = traceId) { "Face [$x,$y,$w,$h], score ${face.score}, roll $angle" }
+        return cropFaceBox(image, x, y, w, h, angle, OUTPUT_SIZE)
     }
 
+    /** All faces BlazeFace finds, in image pixels. */
+    internal fun detectFaces(image: Image): List<FaceDetection> {
+        val box = BlazeFace.letterbox(image.width, image.height)
+        val regressors = FloatArray(BlazeFace.NUM_ANCHORS * BlazeFace.VALUES_PER_ANCHOR)
+        val scores = FloatArray(BlazeFace.NUM_ANCHORS)
+        // output 0 is "regressors" [1, 896, 16], output 1 "classificators" [1, 896, 1]
+        detector.invoke(mapOf(0 to BlazeFace.input(image, box)), mutableMapOf(0 to regressors, 1 to scores))
+        return BlazeFace.decode(regressors, scores, box)
+    }
+
+    private fun toSdkImage(image: BufferedImage): Image {
+        val colors = IntArray(image.width * image.height)
+        image.getRGB(0, 0, image.width, image.height, colors, 0, image.width)
+        for (i in colors.indices) colors[i] = colors[i] and 0xFFFFFF
+        return Image(image.width, image.height, ImageColorType.RGB, colors)
+    }
+
+    private fun toNativeImage(image: Image): BufferedImage {
+        val out = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
+        out.setRGB(0, 0, image.width, image.height, image.colors, 0, image.width)
+        return out
+    }
+
+    private companion object {
+        /** Crop size; the encoder resizes it to the model input. */
+        const val OUTPUT_SIZE = 192
+
+        /** Smallest face side in pixels, and as a share of the image's shorter side (1/8). */
+        const val MIN_FACE_PX = 24
+        const val MIN_FACE_SHARE_DIVISOR = 8
+
+        const val MODEL_RESOURCE = "/models/face_detection_short_range.tflite"
+
+        /**
+         * One detector for all extractors: the model is small, the interpreter is built once and
+         * InterpreterImpl serializes calls, since a TensorFlow Lite interpreter is not thread-safe.
+         */
+        val detector: InterpreterImpl by lazy {
+            val model = FaceExtractorInternal::class.java.getResourceAsStream(MODEL_RESOURCE)
+                ?.use { it.readBytes() }
+                ?: throw IllegalStateException("Resource $MODEL_RESOURCE is missing")
+            InterpreterImpl(model)
+        }
+    }
 }

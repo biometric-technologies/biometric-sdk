@@ -5,7 +5,7 @@ import net.iriscan.sdk.io.ResourceIOFactory
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-actual class InterpreterImpl actual constructor(
+internal class InterpreterImpl(
     modelName: String,
     modelPath: String,
     modelChecksum: String?,

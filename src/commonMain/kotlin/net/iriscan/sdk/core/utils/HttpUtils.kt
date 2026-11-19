@@ -1,6 +1,7 @@
 package net.iriscan.sdk.core.utils
 
 import io.ktor.client.*
+import io.ktor.client.call.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -14,6 +15,7 @@ internal suspend fun HttpClient.getBytes(path: String, onProgress: ((percent: In
         this.get(path) {
             val reportProgress = (0..100 step 10).toMutableList()
             onDownload { sent, total ->
+                if (total == null || total <= 0L) return@onDownload
                 val progress = (sent.toDouble() * 100 / total).toInt()
                 if (reportProgress.contains(progress)) {
                     reportProgress.remove(progress)
@@ -21,7 +23,7 @@ internal suspend fun HttpClient.getBytes(path: String, onProgress: ((percent: In
                 }
             }
         }
-            .readBytes()
+            .body<ByteArray>()
     } catch (ex: Exception) {
         throw IOException(ex.message ?: "Unexpected http error", ex.cause)
     }

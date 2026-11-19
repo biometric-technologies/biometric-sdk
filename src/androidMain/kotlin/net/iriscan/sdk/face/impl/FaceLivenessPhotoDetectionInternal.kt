@@ -1,6 +1,5 @@
 package net.iriscan.sdk.face.impl
 
-import com.soywiz.kmem.length
 import io.github.aakira.napier.Napier
 import net.iriscan.sdk.core.image.NativeImage
 import net.iriscan.sdk.face.LivenessModelPhotoConfiguration
@@ -43,7 +42,7 @@ internal actual class FaceLivenessPhotoDetectionInternal actual constructor(
 
     private fun calculateScore(image: NativeImage, traceId: String? = null): Double {
         val imageBytes = imageTensorProcessor.process(TensorImage.fromBitmap(image)).buffer
-        Napier.d(tag = traceId) { "Image pre-processed, ${imageBytes.length} bytes resolved" }
+        Napier.d(tag = traceId) { "Image pre-processed, ${imageBytes.capacity()} bytes resolved" }
         val modelInputs = mapOf(0 to imageBytes)
         val output = Array(1) { Array(1) { Array(14) { FloatArray(14) } } }
         val modelOutputs = mutableMapOf<Int, Any>(0 to output)

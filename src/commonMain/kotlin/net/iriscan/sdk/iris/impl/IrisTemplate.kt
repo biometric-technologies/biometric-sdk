@@ -10,12 +10,18 @@ package net.iriscan.sdk.iris.impl
  *
  * Serialized form (little-endian bit order inside bytes):
  * "IR2" | version(1) | rows(1) | cols/32(1) | bitsPerCell(1)=2 | reserved(1) | code bits | mask bits
+ *
+ * A template has at least one row and 32 columns, as the encoder makes them
+ * ([net.iriscan.sdk.iris.IrisEncodeProperties]: 1 to 255 rows, 32 to 2048 columns).
  */
 internal class IrisTemplate(val rows: Int, val cols: Int, val code: LongArray, val mask: LongArray) {
     val wordsPerRow = cols * 2 / 64
     val totalBits = rows * cols * 2
 
     init {
+        // Without rows or columns there is no bit to compare, and with 0 columns the rotation
+        // in shifted() divides by zero: no template the encoder writes looks like this.
+        require(rows > 0 && cols > 0) { "An iris template needs at least 1 row and 32 columns, not $rows x $cols" }
         require(cols % 32 == 0)
         require(code.size == rows * wordsPerRow && mask.size == code.size)
     }
@@ -70,6 +76,10 @@ internal class IrisTemplate(val rows: Int, val cols: Int, val code: LongArray, v
             val rows = bytes[4].toInt() and 0xFF
             val cols = (bytes[5].toInt() and 0xFF) * 32
             require(bytes[6].toInt() == 2) { "Unsupported bits per cell" }
+            // A header with 0 rows or 0 columns asks for no bits, so its 8 bytes pass the length
+            // check below, and only damaged data has one. It is rejected here as corrupted, like a
+            // template of the wrong length, before the matcher's rotation divides by its 0 columns.
+            require(rows > 0 && cols > 0) { "Corrupted iris template: $rows rows, $cols columns" }
             val bytesPerPlane = rows * cols * 2 / 8
             require(bytes.size == HEADER_SIZE + 2 * bytesPerPlane) { "Corrupted iris template" }
             val words = rows * cols * 2 / 64

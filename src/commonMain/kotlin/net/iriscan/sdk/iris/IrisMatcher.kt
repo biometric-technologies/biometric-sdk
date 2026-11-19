@@ -5,6 +5,16 @@ import net.iriscan.sdk.core.record.BiometricRecord
 
 /**
  * @author Slava Gornostal
+ *
+ * Compares iris templates made by [IrisEncoder].
+ *
+ * A damaged IR2 template (one that starts with the bytes "IR2" but whose length does not match
+ * its header, or whose header has another version, another number of bits per cell, or 0 rows
+ * or 0 columns) makes the functions below throw IllegalArgumentException when they read it:
+ * [matches] and [score] read both templates when both are IR2 templates; [identify] and
+ * [matchesAny] read the probe when the list is not empty, and every template of the list when
+ * the probe is an IR2 template, so one damaged template in the list stops the search. On iOS
+ * the exception ends the app, because these functions are not marked @Throws.
  */
 interface IrisMatcher {
     /**

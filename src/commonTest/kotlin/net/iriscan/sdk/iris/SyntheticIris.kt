@@ -66,6 +66,11 @@ class SyntheticIris(seed: Int) {
         val reflection: Boolean = true,
         val textureContrast: Double = 22.0,
         val seed: Int = 0,
+        /**
+         * Mean grey level of the iris. The default is a light iris; near-infrared images of darker
+         * irises, as the sensor stores them, are around 60-80.
+         */
+        val irisLevel: Double = 95.0,
     ) {
         val pupilX get() = cx + pupilDx
         val pupilY get() = cy + pupilDy
@@ -103,7 +108,7 @@ class SyntheticIris(seed: Int) {
                 val ccx = c.pupilX + rho * (c.cx - c.pupilX)
                 val ccy = c.pupilY + rho * (c.cy - c.pupilY)
                 val theta = atan2(y - ccy, x - ccx) - rot
-                value = 95.0 + c.textureContrast * texture(theta, rho) - 15 * exp(-rho * 6) + 10 * rho
+                value = c.irisLevel + c.textureContrast * texture(theta, rho) - 15 * exp(-rho * 6) + 10 * rho
             } else {
                 value = 175.0 - 25 * exp(-(d - c.irisRadius) / 30)
             }

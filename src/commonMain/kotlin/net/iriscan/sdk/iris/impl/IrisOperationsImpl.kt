@@ -39,7 +39,11 @@ internal class IrisOperationsImpl(private val config: IrisConfig) : IrisOperatio
 
         override fun extractAndEncode(sample: Image): DataBytes? {
             val normalized = extractNormalized(sample, config.extractor) ?: return null
-            return encodeNormalized(normalized, config.encoder).toBytes().asDataBytes()
+            val template = encodeNormalized(normalized, config.encoder)
+            // A template the matcher cannot compare scores 0 against everyone, a recapture of
+            // the same eye included: report a failed capture rather than enroll or search it.
+            if (!isComparable(template, config.matcher)) return null
+            return template.toBytes().asDataBytes()
         }
 
         override fun encode(sample: Image): DataBytes {

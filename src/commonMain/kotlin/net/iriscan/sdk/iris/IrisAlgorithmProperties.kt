@@ -91,7 +91,11 @@ class IrisMatchProperties(
     val threshold: Double = 0.67, // 0.0-1.0
     /** Maximum rotation compensation, in template columns (each column = 360 / templateCols degrees). */
     val maxShift: Int = 8,
-    /** Minimum share of bits that must be valid in both templates for a comparison to count. */
+    /**
+     * Minimum share of bits that must be valid in both templates for a comparison to count.
+     * A template with fewer valid bits than this can never be compared, so
+     * [IrisEncoder.extractAndEncode] returns null for it.
+     */
     val minComparedBitsFraction: Double = 0.15,
     /** Reference number of compared bits for score normalization; null = 40% of template bits. */
     val normalizationBits: Int? = null,

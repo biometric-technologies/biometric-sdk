@@ -15,6 +15,22 @@ internal class IrisComparison(val score: Double, val hammingDistance: Double, va
 private val NO_MATCH = IrisComparison(0.0, 1.0, 0, 0)
 
 /**
+ * Fewest bits that must be valid in both templates for a comparison to count:
+ * [IrisMatchProperties.minComparedBitsFraction] of the template bits, and at least one.
+ */
+internal fun minComparedBits(totalBits: Int, props: IrisMatchProperties): Int =
+    (props.minComparedBitsFraction * totalBits).toInt().coerceAtLeast(1)
+
+/**
+ * Whether [template] can be compared at all with these settings. A comparison counts only
+ * the bits valid in both templates, never more than the valid bits of either one, so a
+ * template with fewer valid bits than [minComparedBits] scores 0 against every template:
+ * a recapture of the same eye, and the template itself, included.
+ */
+internal fun isComparable(template: IrisTemplate, props: IrisMatchProperties): Boolean =
+    template.validBits() >= minComparedBits(template.totalBits, props)
+
+/**
  * Probe prepared for comparison against many templates: all rotations are
  * computed once.
  */
@@ -26,7 +42,7 @@ internal class IrisProbe(val template: IrisTemplate, props: IrisMatchProperties)
 internal fun compare(probe: IrisProbe, other: IrisTemplate, props: IrisMatchProperties): IrisComparison {
     val t = probe.template
     if (t.rows != other.rows || t.cols != other.cols) return NO_MATCH
-    val minBits = (props.minComparedBitsFraction * t.totalBits).toInt().coerceAtLeast(1)
+    val minBits = minComparedBits(t.totalBits, props)
     val nRef = (props.normalizationBits ?: (0.4 * t.totalBits).toInt()).coerceAtLeast(1).toDouble()
     var best: IrisComparison? = null
     for (s in probe.shifts.indices) {

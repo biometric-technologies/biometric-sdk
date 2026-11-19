@@ -2,10 +2,14 @@ package net.iriscan.sdk.utils
 
 import kotlinx.cinterop.*
 import net.iriscan.sdk.core.image.*
+import net.iriscan.sdk.core.image.toRgb
 import platform.CoreGraphics.*
 
 /**
  * @author Slava Gornostal
+ *
+ * A CGImage with the pixels of [image]: GRAY and BINARY images become gray and black-and-white
+ * pictures ([toRgb]). Used by `convertToCGImage` and by the `Image` overload of the face extractor.
  */
 internal fun imageToCGImage(image: Image): CGImageRef {
     val width = image.width.toULong()
@@ -13,7 +17,7 @@ internal fun imageToCGImage(image: Image): CGImageRef {
     val pixelCount = width * height
     val data = nativeHeap.allocArray<UIntVar>(pixelCount.toInt())
     for (i in 0 until pixelCount.toInt()) {
-        val rgb = image.colors[i]
+        val rgb = toRgb(image.colors[i], image.colorType)
         val rgba = (rgb.red() shl 24) or (rgb.green() shl 16) or (rgb.blue() shl 8) or 0
         data[i] = rgba.toUInt()
     }

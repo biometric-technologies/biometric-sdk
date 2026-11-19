@@ -27,8 +27,9 @@ class BundledFaceDetectorTest {
 
     @Test
     fun imagesWithoutFacesGiveNoFace() {
-        // bytedeco's tensorflow-lite 2.10.0-1.5.8 has natives only for these platforms; elsewhere
-        // (the macOS arm64 runner of the CI build job) there is nothing to run the model with
+        // build.gradle.kts adds TensorFlow Lite natives for these platforms only; elsewhere there
+        // is nothing to run the model with. macOS arm64 is in the list since 2.21.0-1.5.14, so the
+        // Apple Silicon runner of the CI build job runs this test too instead of skipping it.
         if (Loader.getPlatform() !in PLATFORMS_WITH_NATIVES) {
             println("BundledFaceDetectorTest skipped: no TensorFlow Lite natives for ${Loader.getPlatform()}")
             return
@@ -44,6 +45,6 @@ class BundledFaceDetectorTest {
     }
 
     private companion object {
-        val PLATFORMS_WITH_NATIVES = setOf("linux-x86_64", "linux-arm64", "macosx-x86_64", "windows-x86_64")
+        val PLATFORMS_WITH_NATIVES = setOf("linux-x86_64", "linux-arm64", "macosx-x86_64", "macosx-arm64", "windows-x86_64")
     }
 }

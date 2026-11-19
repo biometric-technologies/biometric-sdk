@@ -12,6 +12,7 @@ import net.iriscan.sdk.iris.IrisMatch
 import net.iriscan.sdk.iris.IrisMatcher
 import net.iriscan.sdk.iris.IrisOperations
 import net.iriscan.sdk.iris.IrisQuality
+import net.iriscan.sdk.iris.IrisBoundaries
 import net.iriscan.sdk.iris.IrisQualityAssessor
 
 /**
@@ -26,6 +27,9 @@ internal class IrisOperationsImpl(private val config: IrisConfig) : IrisOperatio
 
         override fun extract(sample: Image): Image? =
             extractInternal(sample, config.extractor)
+
+        override fun segment(sample: Image): IrisBoundaries? =
+            segmentBoundaries(sample, config.extractor)
     }
 
     override fun encoder(): IrisEncoder = object : IrisEncoder {

@@ -35,10 +35,12 @@ constructor(private val modelConfig: LivenessModelPositionConfiguration) {
         }
         val face = result[0]
         Napier.d(tag = traceId) { "Face angles (x,y,z): ${face.headEulerAngleX}, ${face.headEulerAngleY}, ${face.headEulerAngleZ}" }
+        // ML Kit: X is the pitch (up and down), Y the yaw (left and right), Z the roll (tilt to a
+        // shoulder). Top and bottom come from the pitch, as on iOS; this used to pass the roll.
         return getOrientationBasedOnAngles(
-            face.headEulerAngleY.toDouble(),
-            face.headEulerAngleZ.toDouble(),
-            modelConfig.threshold
+            yawDeg = face.headEulerAngleY.toDouble(),
+            pitchDeg = face.headEulerAngleX.toDouble(),
+            threshold = modelConfig.threshold
         )
     }
 

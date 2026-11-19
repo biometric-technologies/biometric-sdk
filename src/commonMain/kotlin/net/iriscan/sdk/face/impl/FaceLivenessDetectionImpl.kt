@@ -18,14 +18,17 @@ internal expect class FaceLivenessPositionDetectionInternal(modelConfig: Livenes
 }
 
 /**
- * Detects and return position based on euler angles
- * 0 - straight, 1 - left, 2 - right, 3 - top, 4 - bottom
- * */
-internal fun getOrientationBasedOnAngles(eulerY: Double, eulerZ: Double, threshold: Double): Int =
+ * Head position from the head angles in degrees, as the platform face detector reports them:
+ * [yawDeg] turns the head left and right, [pitchDeg] up and down. A turn counts once its angle
+ * reaches [threshold]; the yaw is checked first.
+ *
+ * Returns 0 straight, 1 left, 2 right, 3 top, 4 bottom.
+ */
+internal fun getOrientationBasedOnAngles(yawDeg: Double, pitchDeg: Double, threshold: Double): Int =
     when {
-        eulerY < 0 && eulerY <= -threshold -> 2
-        eulerY > 0 && eulerY >= threshold -> 1
-        eulerZ < 0 && eulerZ <= -threshold -> 4
-        eulerZ > 0 && eulerZ >= threshold -> 3
+        yawDeg <= -threshold -> 2
+        yawDeg >= threshold -> 1
+        pitchDeg <= -threshold -> 4
+        pitchDeg >= threshold -> 3
         else -> 0
     }

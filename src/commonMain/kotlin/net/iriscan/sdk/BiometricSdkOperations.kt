@@ -35,7 +35,7 @@ internal class BiometricSdkOperationsImpl(
     private val fingerOperations = config.finger?.let { FingerOperationsImpl(it) }
 
     /**
-     * Face is set up apart from iris. It loads native libraries (OpenCV and TensorFlow Lite on the
+     * Face is set up apart from iris. It loads native libraries (TensorFlow Lite on the
      * JVM) and a model file, and any of them can be missing on a given machine. If that fails, the
      * error is kept and reported by [face], and iris and I/O keep working.
      */

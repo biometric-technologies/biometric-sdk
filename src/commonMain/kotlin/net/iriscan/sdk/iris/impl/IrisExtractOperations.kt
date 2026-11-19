@@ -1,6 +1,9 @@
 package net.iriscan.sdk.iris.impl
 
 import net.iriscan.sdk.core.image.Image
+import net.iriscan.sdk.iris.EyelidCurve
+import net.iriscan.sdk.iris.IrisBoundaries
+import net.iriscan.sdk.iris.IrisBoundaryCircle
 import net.iriscan.sdk.iris.IrisExtractProperties
 
 /**
@@ -20,4 +23,18 @@ internal fun extractNormalized(sample: Image, props: IrisExtractProperties): Nor
     // too little visible iris for a usable template
     if (normalized.validFraction < 0.2) return null
     return normalized
+}
+
+/**
+ * The segmentation of [sample] as public [IrisBoundaries]: the same [segmentIris] call that
+ * [extractNormalized] makes, so what is drawn is exactly what gets unwrapped.
+ */
+internal fun segmentBoundaries(sample: Image, props: IrisExtractProperties): IrisBoundaries? {
+    val seg = segmentIris(toGray(sample), props) ?: return null
+    return IrisBoundaries(
+        pupil = IrisBoundaryCircle(seg.pupil.x, seg.pupil.y, seg.pupil.r),
+        limbus = IrisBoundaryCircle(seg.iris.x, seg.iris.y, seg.iris.r),
+        upperEyelid = seg.upperEyelid?.let { EyelidCurve(it.a, it.b, it.c) },
+        lowerEyelid = seg.lowerEyelid?.let { EyelidCurve(it.a, it.b, it.c) },
+    )
 }

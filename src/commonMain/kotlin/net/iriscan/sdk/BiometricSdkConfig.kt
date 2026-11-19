@@ -25,12 +25,27 @@ class BiometricSdkConfig @JvmOverloads constructor(
     val finger: FingerConfig? = null,
 )
 
+/**
+ * Iris settings.
+ *
+ * Each properties class checks its own values. [IrisExtractProperties.normalizedWidth] must also be
+ * a multiple of [IrisEncodeProperties.templateCols], because the encoder takes every
+ * (normalizedWidth / templateCols)-th column of the unwrapped iris. Neither class can check that
+ * alone, so the constructor does: a configuration that cannot encode fails where it is built, not
+ * at the first encoding.
+ */
 data class IrisConfig @JvmOverloads constructor(
     val extractor: IrisExtractProperties,
     val encoder: IrisEncodeProperties,
     val matcher: IrisMatchProperties,
     val quality: IrisQualityProperties = IrisQualityProperties(),
-)
+) {
+    init {
+        require(extractor.normalizedWidth % encoder.templateCols == 0) {
+            "normalizedWidth (${extractor.normalizedWidth}) must be a multiple of templateCols (${encoder.templateCols})"
+        }
+    }
+}
 
 data class FingerConfig(
     val encoder: FingerEncodeProperties = FingerEncodeProperties(),

@@ -25,7 +25,11 @@ class IrisExtractProperties(
     val maxPupilIrisRatio: Double = 0.75,
     /** Angular sectors (degrees, 0 = right, 90 = down) used to find the limbus; avoids eyelids. */
     val irisAnglesToSearch: Array<ClosedRange<Double>> = arrayOf(-40.0..40.0, 140.0..220.0),
-    /** Unwrapped texture size. Width must be a power of two. */
+    /**
+     * Unwrapped texture size. Width must be a power of two, because the encoder filters each row
+     * with a radix-2 FFT, and a multiple of [IrisEncodeProperties.templateCols], which
+     * [net.iriscan.sdk.IrisConfig] checks.
+     */
     val normalizedWidth: Int = 256,
     val normalizedHeight: Int = 64,
     /** Detect upper and lower eyelids and mask the iris area they cover. */
@@ -55,7 +59,12 @@ class IrisExtractProperties(
 class IrisEncodeProperties(
     /** Template rows: radial bands, averaged from the unwrapped texture. */
     val templateRows: Int = 16,
-    /** Template columns: angular positions. Must be a multiple of 32. */
+    /**
+     * Template columns: angular positions, one every normalizedWidth / templateCols texture columns.
+     * Must be a multiple of 32, so that a row of code bits fills whole 64-bit words, and divide
+     * [IrisExtractProperties.normalizedWidth] (32, 64, 128 or 256 with the default width), which
+     * [net.iriscan.sdk.IrisConfig] checks.
+     */
     val templateCols: Int = 128,
     /** Log-Gabor center wavelength in pixels of the unwrapped texture. */
     val wavelength: Double = 18.0,
